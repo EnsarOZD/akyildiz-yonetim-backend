@@ -1,0 +1,6 @@
+@AkyildizYonetim.API_HostAddress = http://localhost:5212
+
+GET {{AkyildizYonetim.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
