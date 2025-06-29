@@ -1,0 +1,8 @@
+[phases.setup]
+nixpkgs = ["dotnet-sdk_8"]
+
+[phases.build]
+cmds = ["dotnet build"]
+
+[phases.start]
+cmds = ["dotnet AkyildizYonetim.API.dll"]
