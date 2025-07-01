@@ -32,12 +32,15 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 });
 
 // Connection string
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? 
-    "Server=localhost;Database=AkyildizYonetimDb;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=true;Encrypt=false";
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? "Server=(localdb)\\mssqllocaldb;Database=AkyildizYonetimDb;Trusted_Connection=True;MultipleActiveResultSets=true";
 
 // DbContext
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(connectionString));
+    // Eski
+// options.UseSqlServer(connectionString);
+
+// Yeni
+options.UseNpgsql(connectionString);
 
 // IApplicationDbContext olarak ApplicationDbContext'i kaydet
 builder.Services.AddScoped<IApplicationDbContext>(provider => provider.GetRequiredService<ApplicationDbContext>());
@@ -206,8 +209,11 @@ using (var scope = app.Services.CreateScope())
 }
 
 // Configure the HTTP request pipeline.
-app.UseSwagger();
-app.UseSwaggerUI();
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
 
 // CORS middleware'ini UseHttpsRedirection'dan önce ekle
 app.UseCors("AllowAll");
