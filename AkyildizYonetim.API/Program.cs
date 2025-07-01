@@ -207,6 +207,66 @@ using (var scope = app.Services.CreateScope())
         flat3.TenantId = tenant3.Id;
         await context.SaveChangesAsync();
         
+        // Admin kullanıcı ekle
+        var adminUser = new User
+        {
+            Id = Guid.NewGuid(),
+            FirstName = "Admin",
+            LastName = "User",
+            Email = "admin@email.com",
+            PasswordHash = "VtFzv7kQkzQw1Qn6l0e6Qw6n6Qw6Qw6n6Qw6Qw6n6Qw=", // admin1234 SHA256 hash
+            Role = UserRole.Admin,
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow
+        };
+        context.Users.Add(adminUser);
+
+        // Owner kullanıcı ekle
+        var ownerUser = new User
+        {
+            Id = Guid.NewGuid(),
+            FirstName = "Owner",
+            LastName = "User",
+            Email = "owner@email.com",
+            PasswordHash = "VtFzv7kQkzQw1Qn6l0e6Qw6n6Qw6Qw6n6Qw6Qw6n6Qw=", // admin1234 SHA256 hash
+            Role = UserRole.Owner,
+            OwnerId = owner1.Id,
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow
+        };
+        context.Users.Add(ownerUser);
+
+        // Tenant kullanıcı ekle
+        var tenantUser = new User
+        {
+            Id = Guid.NewGuid(),
+            FirstName = "Tenant",
+            LastName = "User",
+            Email = "tenant@email.com",
+            PasswordHash = "VtFzv7kQkzQw1Qn6l0e6Qw6n6Qw6Qw6n6Qw6Qw6n6Qw=", // admin1234 SHA256 hash
+            Role = UserRole.Tenant,
+            TenantId = tenant1.Id,
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow
+        };
+        context.Users.Add(tenantUser);
+
+        // Observer kullanıcı ekle
+        var observerUser = new User
+        {
+            Id = Guid.NewGuid(),
+            FirstName = "Observer",
+            LastName = "User",
+            Email = "observer@email.com",
+            PasswordHash = "VtFzv7kQkzQw1Qn6l0e6Qw6n6Qw6Qw6n6Qw6Qw6n6Qw=", // admin1234 SHA256 hash
+            Role = UserRole.Observer,
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow
+        };
+        context.Users.Add(observerUser);
+
+        await context.SaveChangesAsync();
+        
         Console.WriteLine("✅ Seed data başarıyla eklendi!");
         Console.WriteLine($"   - {context.Owners.Count()} mal sahibi");
         Console.WriteLine($"   - {context.Tenants.Count()} kiracı");
