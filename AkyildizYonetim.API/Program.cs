@@ -61,7 +61,7 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    context.Database.EnsureDeleted(); // Veritabanını sil - sadece gerektiğinde aktif et
+    // context.Database.EnsureDeleted(); // Veritabanını sil - sadece gerektiğinde aktif et
     context.Database.EnsureCreated(); // Yeniden oluştur
     
     // Seed data ekle
