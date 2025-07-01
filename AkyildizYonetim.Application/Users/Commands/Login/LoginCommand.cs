@@ -2,6 +2,7 @@ using AkyildizYonetim.Application.Common.Interfaces;
 using AkyildizYonetim.Application.Common.Models;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -16,16 +17,45 @@ public record LoginCommand : IRequest<Result<LoginResultDto>>
 public class LoginCommandHandler : IRequestHandler<LoginCommand, Result<LoginResultDto>>
 {
     private readonly IApplicationDbContext _context;
-    public LoginCommandHandler(IApplicationDbContext context) { _context = context; }
+    private readonly ILogger<LoginCommandHandler> _logger;
+    
+    public LoginCommandHandler(IApplicationDbContext context, ILogger<LoginCommandHandler> logger) 
+    { 
+        _context = context; 
+        _logger = logger;
+    }
+    
     public async Task<Result<LoginResultDto>> Handle(LoginCommand request, CancellationToken cancellationToken)
     {
+        _logger.LogInformation("Searching for user with email: {Email}", request.Email);
+        
         var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == request.Email && !u.IsDeleted, cancellationToken);
+        
         if (user == null)
+        {
+            _logger.LogWarning("User not found for email: {Email}", request.Email);
             return Result<LoginResultDto>.Failure("Kullanıcı bulunamadı.");
-        if (user.PasswordHash != HashPassword(request.Password))
+        }
+        
+        _logger.LogInformation("User found: {Email}, IsActive: {IsActive}", user.Email, user.IsActive);
+        
+        var hashedPassword = HashPassword(request.Password);
+        _logger.LogInformation("Password hash comparison - Stored: {StoredHash}, Provided: {ProvidedHash}", user.PasswordHash, hashedPassword);
+        
+        if (user.PasswordHash != hashedPassword)
+        {
+            _logger.LogWarning("Password mismatch for user: {Email}", request.Email);
             return Result<LoginResultDto>.Failure("Şifre hatalı.");
+        }
+        
         if (!user.IsActive)
+        {
+            _logger.LogWarning("Inactive user login attempt: {Email}", request.Email);
             return Result<LoginResultDto>.Failure("Kullanıcı pasif durumda.");
+        }
+        
+        _logger.LogInformation("Login successful for user: {Email}, Role: {Role}", user.Email, user.Role);
+        
         var result = new LoginResultDto
         {
             UserId = user.Id,

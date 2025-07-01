@@ -11,13 +11,31 @@ namespace AkyildizYonetim.API.Controllers;
 public class AuthController : ControllerBase
 {
     private readonly IMediator _mediator;
-    public AuthController(IMediator mediator) { _mediator = mediator; }
+    private readonly ILogger<AuthController> _logger;
+    
+    public AuthController(IMediator mediator, ILogger<AuthController> logger) 
+    { 
+        _mediator = mediator; 
+        _logger = logger;
+    }
 
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginCommand command)
     {
+        _logger.LogInformation("Login attempt for email: {Email}", command.Email);
+        
         var result = await _mediator.Send(command);
-        return result.IsSuccess ? Ok(result.Data) : Unauthorized(result.ErrorMessage ?? string.Join(", ", result.Errors));
+        
+        if (result.IsSuccess)
+        {
+            _logger.LogInformation("Login successful for user: {Email}", command.Email);
+            return Ok(result.Data);
+        }
+        else
+        {
+            _logger.LogWarning("Login failed for user: {Email}. Error: {Error}", command.Email, result.ErrorMessage ?? string.Join(", ", result.Errors));
+            return Unauthorized(result.ErrorMessage ?? string.Join(", ", result.Errors));
+        }
     }
 
     [HttpPost("reset-password")]
