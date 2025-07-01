@@ -214,7 +214,7 @@ using (var scope = app.Services.CreateScope())
             FirstName = "Admin",
             LastName = "User",
             Email = "admin@email.com",
-            PasswordHash = "VtFzv7kQkzQw1Qn6l0e6Qw6n6Qw6Qw6n6Qw6Qw6n6Qw=", // admin1234 SHA256 hash
+            PasswordHash = "rJaJ4ickJwheNbnT4+i+2IyzQ0gotDuG/AWWytTG4nA=", // admin1234 SHA256 hash
             Role = UserRole.Admin,
             IsActive = true,
             CreatedAt = DateTime.UtcNow
@@ -228,7 +228,7 @@ using (var scope = app.Services.CreateScope())
             FirstName = "Owner",
             LastName = "User",
             Email = "owner@email.com",
-            PasswordHash = "VtFzv7kQkzQw1Qn6l0e6Qw6n6Qw6Qw6n6Qw6Qw6n6Qw=", // admin1234 SHA256 hash
+            PasswordHash = "rJaJ4ickJwheNbnT4+i+2IyzQ0gotDuG/AWWytTG4nA=", // admin1234 SHA256 hash
             Role = UserRole.Owner,
             OwnerId = owner1.Id,
             IsActive = true,
@@ -243,7 +243,7 @@ using (var scope = app.Services.CreateScope())
             FirstName = "Tenant",
             LastName = "User",
             Email = "tenant@email.com",
-            PasswordHash = "VtFzv7kQkzQw1Qn6l0e6Qw6n6Qw6Qw6n6Qw6Qw6n6Qw=", // admin1234 SHA256 hash
+            PasswordHash = "rJaJ4ickJwheNbnT4+i+2IyzQ0gotDuG/AWWytTG4nA=", // admin1234 SHA256 hash
             Role = UserRole.Tenant,
             TenantId = tenant1.Id,
             IsActive = true,
@@ -258,7 +258,7 @@ using (var scope = app.Services.CreateScope())
             FirstName = "Observer",
             LastName = "User",
             Email = "observer@email.com",
-            PasswordHash = "VtFzv7kQkzQw1Qn6l0e6Qw6n6Qw6Qw6n6Qw6Qw6n6Qw=", // admin1234 SHA256 hash
+            PasswordHash = "rJaJ4ickJwheNbnT4+i+2IyzQ0gotDuG/AWWytTG4nA=", // admin1234 SHA256 hash
             Role = UserRole.Observer,
             IsActive = true,
             CreatedAt = DateTime.UtcNow
