@@ -37,7 +37,7 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 
 // DbContext
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(connectionString));
+    options.UseNpgsql(connectionString));
 
 // IApplicationDbContext olarak ApplicationDbContext'i kaydet
 builder.Services.AddScoped<IApplicationDbContext>(provider => provider.GetRequiredService<ApplicationDbContext>());
