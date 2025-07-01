@@ -208,65 +208,71 @@ using (var scope = app.Services.CreateScope())
         flat3.TenantId = tenant3.Id;
         await context.SaveChangesAsync();
         
-        // Admin kullanıcı ekle
-        var adminUser = new User
+        // Kullanıcı seed işlemleri (her zaman çalışsın diye ayrı kontrol)
+        if (!context.Users.Any())
         {
-            Id = Guid.NewGuid(),
-            FirstName = "Admin",
-            LastName = "User",
-            Email = "admin@email.com",
-            PasswordHash = "rJaJ4ickJwheNbnT4+i+2IyzQ0gotDuG/AWWytTG4nA=", // admin1234 SHA256 hash
-            Role = UserRole.Admin,
-            IsActive = true,
-            CreatedAt = DateTime.UtcNow
-        };
-        context.Users.Add(adminUser);
+            // Admin kullanıcı ekle
+            var adminUser = new User
+            {
+                Id = Guid.NewGuid(),
+                FirstName = "Admin",
+                LastName = "User",
+                Email = "admin@email.com",
+                PasswordHash = "rJaJ4ickJwheNbnT4+i+2IyzQ0gotDuG/AWWytTG4nA=", // admin1234 SHA256 hash
+                Role = UserRole.Admin,
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow
+            };
+            context.Users.Add(adminUser);
 
-        // Owner kullanıcı ekle
-        var ownerUser = new User
-        {
-            Id = Guid.NewGuid(),
-            FirstName = "Owner",
-            LastName = "User",
-            Email = "owner@email.com",
-            PasswordHash = "rJaJ4ickJwheNbnT4+i+2IyzQ0gotDuG/AWWytTG4nA=", // admin1234 SHA256 hash
-            Role = UserRole.Owner,
-            OwnerId = owner1.Id,
-            IsActive = true,
-            CreatedAt = DateTime.UtcNow
-        };
-        context.Users.Add(ownerUser);
+            // Owner kullanıcı ekle
+            var owner = context.Owners.FirstOrDefault();
+            var ownerUser = new User
+            {
+                Id = Guid.NewGuid(),
+                FirstName = "Owner",
+                LastName = "User",
+                Email = "owner@email.com",
+                PasswordHash = "rJaJ4ickJwheNbnT4+i+2IyzQ0gotDuG/AWWytTG4nA=", // admin1234 SHA256 hash
+                Role = UserRole.Owner,
+                OwnerId = owner?.Id,
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow
+            };
+            context.Users.Add(ownerUser);
 
-        // Tenant kullanıcı ekle
-        var tenantUser = new User
-        {
-            Id = Guid.NewGuid(),
-            FirstName = "Tenant",
-            LastName = "User",
-            Email = "tenant@email.com",
-            PasswordHash = "rJaJ4ickJwheNbnT4+i+2IyzQ0gotDuG/AWWytTG4nA=", // admin1234 SHA256 hash
-            Role = UserRole.Tenant,
-            TenantId = tenant1.Id,
-            IsActive = true,
-            CreatedAt = DateTime.UtcNow
-        };
-        context.Users.Add(tenantUser);
+            // Tenant kullanıcı ekle
+            var tenant = context.Tenants.FirstOrDefault();
+            var tenantUser = new User
+            {
+                Id = Guid.NewGuid(),
+                FirstName = "Tenant",
+                LastName = "User",
+                Email = "tenant@email.com",
+                PasswordHash = "rJaJ4ickJwheNbnT4+i+2IyzQ0gotDuG/AWWytTG4nA=", // admin1234 SHA256 hash
+                Role = UserRole.Tenant,
+                TenantId = tenant?.Id,
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow
+            };
+            context.Users.Add(tenantUser);
 
-        // Observer kullanıcı ekle
-        var observerUser = new User
-        {
-            Id = Guid.NewGuid(),
-            FirstName = "Observer",
-            LastName = "User",
-            Email = "observer@email.com",
-            PasswordHash = "rJaJ4ickJwheNbnT4+i+2IyzQ0gotDuG/AWWytTG4nA=", // admin1234 SHA256 hash
-            Role = UserRole.Observer,
-            IsActive = true,
-            CreatedAt = DateTime.UtcNow
-        };
-        context.Users.Add(observerUser);
+            // Observer kullanıcı ekle
+            var observerUser = new User
+            {
+                Id = Guid.NewGuid(),
+                FirstName = "Observer",
+                LastName = "User",
+                Email = "observer@email.com",
+                PasswordHash = "rJaJ4ickJwheNbnT4+i+2IyzQ0gotDuG/AWWytTG4nA=", // admin1234 SHA256 hash
+                Role = UserRole.Observer,
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow
+            };
+            context.Users.Add(observerUser);
 
-        await context.SaveChangesAsync();
+            await context.SaveChangesAsync();
+        }
         
         Console.WriteLine("✅ Seed data başarıyla eklendi!");
         Console.WriteLine($"   - {context.Owners.Count()} mal sahibi");
