@@ -61,9 +61,10 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    // context.Database.EnsureDeleted(); // Veritabanını sil - sadece gerektiğinde aktif et
-    context.Database.EnsureCreated(); // Yeniden oluştur
-    
+    if (builder.Environment.IsProduction())
+    {
+        context.Database.Migrate(); // Render/Production ortamında migration'ı otomatik uygula
+    }
     // Seed data ekle
     if (!context.Owners.Any())
     {
