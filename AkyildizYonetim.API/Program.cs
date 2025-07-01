@@ -271,6 +271,14 @@ using (var scope = app.Services.CreateScope())
         Console.WriteLine($"   - {context.Owners.Count()} mal sahibi");
         Console.WriteLine($"   - {context.Tenants.Count()} kiracı");
         Console.WriteLine($"   - {context.Flats.Count()} daire");
+        Console.WriteLine($"   - {context.Users.Count()} kullanıcı");
+        
+        // Kullanıcıları listele
+        var users = await context.Users.ToListAsync();
+        foreach (var user in users)
+        {
+            Console.WriteLine($"   - Kullanıcı: {user.Email} ({user.Role})");
+        }
     }
 }
 
