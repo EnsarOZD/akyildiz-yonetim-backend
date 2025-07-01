@@ -117,6 +117,9 @@ using (var scope = app.Services.CreateScope())
             Floor = 1,
             OwnerId = owner1.Id,
             TenantId = null,
+            ApartmentNumber = "A1",
+            RoomCount = 3,
+            IsActive = true,
             CreatedAt = DateTime.UtcNow
         };
         
@@ -127,6 +130,9 @@ using (var scope = app.Services.CreateScope())
             Floor = 1,
             OwnerId = owner2.Id,
             TenantId = null,
+            ApartmentNumber = "A2",
+            RoomCount = 2,
+            IsActive = true,
             CreatedAt = DateTime.UtcNow
         };
         
@@ -137,6 +143,9 @@ using (var scope = app.Services.CreateScope())
             Floor = 2,
             OwnerId = owner3.Id,
             TenantId = null,
+            ApartmentNumber = "A3",
+            RoomCount = 4,
+            IsActive = true,
             CreatedAt = DateTime.UtcNow
         };
         
