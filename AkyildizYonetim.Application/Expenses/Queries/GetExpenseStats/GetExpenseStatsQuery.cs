@@ -36,9 +36,13 @@ public class GetExpenseStatsQueryHandler : IRequestHandler<GetExpenseStatsQuery,
             var totalCount = await query.CountAsync(cancellationToken);
 
             // Bu ayki istatistikler
-            var currentMonth = DateTime.Now;
-            var startOfMonth = new DateTime(currentMonth.Year, currentMonth.Month, 1);
+            var currentMonth = DateTime.UtcNow;
+            var startOfMonth = new DateTime(currentMonth.Year, currentMonth.Month, 1, 0, 0, 0, DateTimeKind.Utc);
             var endOfMonth = startOfMonth.AddMonths(1).AddDays(-1);
+
+            // Emin olmak için SpecifyKind ile de ayarlayalım
+            startOfMonth = DateTime.SpecifyKind(startOfMonth, DateTimeKind.Utc);
+            endOfMonth = DateTime.SpecifyKind(endOfMonth, DateTimeKind.Utc);
 
             var thisMonthQuery = _context.Expenses
                 .Where(e => !e.IsDeleted && e.ExpenseDate >= startOfMonth && e.ExpenseDate <= endOfMonth);
