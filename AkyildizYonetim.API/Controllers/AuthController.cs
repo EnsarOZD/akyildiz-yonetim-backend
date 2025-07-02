@@ -3,6 +3,8 @@ using AkyildizYonetim.Application.Users.Commands.ResetPassword;
 using AkyildizYonetim.Application.Users.Commands.ChangePassword;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
 
 namespace AkyildizYonetim.API.Controllers;
 
@@ -50,5 +52,23 @@ public class AuthController : ControllerBase
     {
         var result = await _mediator.Send(command);
         return result.IsSuccess ? Ok() : BadRequest(result.ErrorMessage ?? string.Join(", ", result.Errors));
+    }
+
+    [HttpGet("me")]
+    [Authorize]
+    public IActionResult GetCurrentUser()
+    {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        var email = User.FindFirst(ClaimTypes.Email)?.Value;
+        var name = User.FindFirst(ClaimTypes.Name)?.Value;
+        var role = User.FindFirst(ClaimTypes.Role)?.Value;
+        
+        return Ok(new
+        {
+            UserId = userId,
+            Email = email,
+            Name = name,
+            Role = role
+        });
     }
 } 

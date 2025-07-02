@@ -18,11 +18,13 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, Result<LoginRes
 {
     private readonly IApplicationDbContext _context;
     private readonly ILogger<LoginCommandHandler> _logger;
+    private readonly IJwtService _jwtService;
     
-    public LoginCommandHandler(IApplicationDbContext context, ILogger<LoginCommandHandler> logger) 
+    public LoginCommandHandler(IApplicationDbContext context, ILogger<LoginCommandHandler> logger, IJwtService jwtService) 
     { 
         _context = context; 
         _logger = logger;
+        _jwtService = jwtService;
     }
     
     public async Task<Result<LoginResultDto>> Handle(LoginCommand request, CancellationToken cancellationToken)
@@ -56,6 +58,9 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, Result<LoginRes
         
         _logger.LogInformation("Login successful for user: {Email}, Role: {Role}", user.Email, user.Role);
         
+        // JWT token üret
+        var token = _jwtService.GenerateToken(user);
+        
         var result = new LoginResultDto
         {
             UserId = user.Id,
@@ -63,6 +68,7 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, Result<LoginRes
             LastName = user.LastName,
             Email = user.Email,
             Role = user.Role.ToString(),
+            Token = token,
             RequiresPasswordReset = false // user.RequiresPasswordReset
         };
         return Result<LoginResultDto>.Success(result);
@@ -83,5 +89,6 @@ public class LoginResultDto
     public string LastName { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
     public string Role { get; set; } = string.Empty;
+    public string Token { get; set; } = string.Empty;
     public bool RequiresPasswordReset { get; set; }
 } 
