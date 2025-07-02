@@ -352,6 +352,24 @@ using (var scope = app.Services.CreateScope())
 
         await context.SaveChangesAsync();
     }
+
+    // AidatDefinitions seed
+    if (!context.AidatDefinitions.Any())
+    {
+        var aidat = new AidatDefinition
+        {
+            Id = Guid.NewGuid(),
+            TenantId = Guid.NewGuid(), // örnek tenantId, gerçek tenant ile eşleştirilebilir
+            Unit = "A1",
+            Year = 2024,
+            Amount = 500.00m,
+            VatIncludedAmount = 600.00m,
+            IsActive = true,
+            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc)
+        };
+        context.AidatDefinitions.Add(aidat);
+        await context.SaveChangesAsync();
+    }
 }
 
 // Configure the HTTP request pipeline.

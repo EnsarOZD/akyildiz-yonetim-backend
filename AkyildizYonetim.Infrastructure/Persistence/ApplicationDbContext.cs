@@ -18,6 +18,7 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
     public DbSet<User> Users => Set<User>();
     public DbSet<UtilityDebt> UtilityDebts { get; set; }
     public DbSet<AdvanceAccount> AdvanceAccounts => Set<AdvanceAccount>();
+    public DbSet<AidatDefinition> AidatDefinitions => Set<AidatDefinition>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
