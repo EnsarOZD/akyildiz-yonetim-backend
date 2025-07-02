@@ -22,49 +22,57 @@ public class GetExpenseStatsQueryHandler : IRequestHandler<GetExpenseStatsQuery,
 
     public async Task<Result<ExpenseStatsDto>> Handle(GetExpenseStatsQuery request, CancellationToken cancellationToken)
     {
-        var query = _context.Expenses.Where(e => !e.IsDeleted);
-
-        if (request.StartDate.HasValue)
-            query = query.Where(e => e.ExpenseDate >= request.StartDate.Value);
-
-        if (request.EndDate.HasValue)
-            query = query.Where(e => e.ExpenseDate <= request.EndDate.Value);
-
-        var totalAmount = await query.SumAsync(e => e.Amount, cancellationToken);
-        var totalCount = await query.CountAsync(cancellationToken);
-
-        // Bu ayki istatistikler
-        var currentMonth = DateTime.Now;
-        var startOfMonth = new DateTime(currentMonth.Year, currentMonth.Month, 1);
-        var endOfMonth = startOfMonth.AddMonths(1).AddDays(-1);
-
-        var thisMonthQuery = _context.Expenses
-            .Where(e => !e.IsDeleted && e.ExpenseDate >= startOfMonth && e.ExpenseDate <= endOfMonth);
-
-        var thisMonthAmount = await thisMonthQuery.SumAsync(e => e.Amount, cancellationToken);
-        var thisMonthCount = await thisMonthQuery.CountAsync(cancellationToken);
-
-        // Tip bazında istatistikler
-        var typeStats = await query
-            .GroupBy(e => e.Type)
-            .Select(g => new ExpenseTypeStatsDto
-            {
-                Type = g.Key,
-                Count = g.Count(),
-                TotalAmount = g.Sum(e => e.Amount)
-            })
-            .ToListAsync(cancellationToken);
-
-        var stats = new ExpenseStatsDto
+        try
         {
-            TotalAmount = totalAmount,
-            TotalCount = totalCount,
-            ThisMonthAmount = thisMonthAmount,
-            ThisMonthCount = thisMonthCount,
-            TypeStats = typeStats
-        };
+            var query = _context.Expenses.Where(e => !e.IsDeleted);
 
-        return Result<ExpenseStatsDto>.Success(stats);
+            if (request.StartDate.HasValue)
+                query = query.Where(e => e.ExpenseDate >= request.StartDate.Value);
+
+            if (request.EndDate.HasValue)
+                query = query.Where(e => e.ExpenseDate <= request.EndDate.Value);
+
+            var totalAmount = await query.SumAsync(e => (decimal?)e.Amount, cancellationToken) ?? 0;
+            var totalCount = await query.CountAsync(cancellationToken);
+
+            // Bu ayki istatistikler
+            var currentMonth = DateTime.Now;
+            var startOfMonth = new DateTime(currentMonth.Year, currentMonth.Month, 1);
+            var endOfMonth = startOfMonth.AddMonths(1).AddDays(-1);
+
+            var thisMonthQuery = _context.Expenses
+                .Where(e => !e.IsDeleted && e.ExpenseDate >= startOfMonth && e.ExpenseDate <= endOfMonth);
+
+            var thisMonthAmount = await thisMonthQuery.SumAsync(e => (decimal?)e.Amount, cancellationToken) ?? 0;
+            var thisMonthCount = await thisMonthQuery.CountAsync(cancellationToken);
+
+            // Tip bazında istatistikler
+            var typeStats = await query
+                .GroupBy(e => e.Type)
+                .Select(g => new ExpenseTypeStatsDto
+                {
+                    Type = g.Key,
+                    Count = g.Count(),
+                    TotalAmount = g.Sum(e => (decimal?)e.Amount) ?? 0
+                })
+                .ToListAsync(cancellationToken);
+
+            var stats = new ExpenseStatsDto
+            {
+                TotalAmount = totalAmount,
+                TotalCount = totalCount,
+                ThisMonthAmount = thisMonthAmount,
+                ThisMonthCount = thisMonthCount,
+                TypeStats = typeStats
+            };
+
+            return Result<ExpenseStatsDto>.Success(stats);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[GetExpenseStatsQueryHandler] Hata: {ex.Message} - {ex.StackTrace}");
+            return Result<ExpenseStatsDto>.Failure("Gider istatistikleri alınırken hata oluştu: " + ex.Message);
+        }
     }
 }
 
