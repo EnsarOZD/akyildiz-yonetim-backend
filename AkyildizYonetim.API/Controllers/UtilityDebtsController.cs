@@ -39,11 +39,11 @@ public class UtilityDebtsController : ControllerBase
     }
 
     [HttpGet("last-readings/{type}")]
-    public async Task<IActionResult> GetLastReadings(string type)
+    public Task<IActionResult> GetLastReadings(string type)
     {
         // Bu endpoint son okumaları getirmek için kullanılacak
         // Şimdilik boş liste döndürüyoruz, daha sonra implement edilecek
-        return Ok(new List<object>());
+        return Task.FromResult<IActionResult>(Ok(new List<object>()));
     }
 
     [HttpPost]
@@ -70,11 +70,11 @@ public class UtilityDebtsController : ControllerBase
     }
 
     [HttpDelete("period/{period}")]
-    public async Task<IActionResult> DeleteByPeriod(string period)
+    public Task<IActionResult> DeleteByPeriod(string period)
     {
         // Bu endpoint dönem bazında silme için kullanılacak
         // Şimdilik başarılı döndürüyoruz, daha sonra implement edilecek
-        return NoContent();
+        return Task.FromResult<IActionResult>(NoContent());
     }
 
     [HttpPost("distribute")]
@@ -168,11 +168,11 @@ public class UtilityDebtsController : ControllerBase
     }
 
     [HttpPost("create-aidat")]
-    public async Task<IActionResult> CreateAidat([FromBody] CreateAidatRequest request)
+    public Task<IActionResult> CreateAidat([FromBody] CreateAidatRequest request)
     {
         // Bu endpoint aidat oluşturma için kullanılacak
         // Şimdilik başarılı döndürüyoruz, daha sonra implement edilecek
-        return Ok(new { tenantDuesCreated = 0, ownerDuesCreated = 0 });
+        return Task.FromResult<IActionResult>(Ok(new { tenantDuesCreated = 0, ownerDuesCreated = 0 }));
     }
 }
 

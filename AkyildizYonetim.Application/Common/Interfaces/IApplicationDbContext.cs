@@ -13,6 +13,9 @@ public interface IApplicationDbContext
     DbSet<User> Users { get; }
     DbSet<UtilityDebt> UtilityDebts { get; set; }
     DbSet<AdvanceAccount> AdvanceAccounts { get; }
+    DbSet<AidatDefinition> AidatDefinitions { get; }
+    DbSet<MeterReading> MeterReadings { get; }
+    DbSet<UtilityBill> UtilityBills { get; }
     
     Task<int> SaveChangesAsync(CancellationToken cancellationToken);
 } 

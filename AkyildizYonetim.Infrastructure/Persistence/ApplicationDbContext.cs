@@ -19,6 +19,8 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
     public DbSet<UtilityDebt> UtilityDebts { get; set; }
     public DbSet<AdvanceAccount> AdvanceAccounts => Set<AdvanceAccount>();
     public DbSet<AidatDefinition> AidatDefinitions => Set<AidatDefinition>();
+    public DbSet<MeterReading> MeterReadings => Set<MeterReading>();
+    public DbSet<UtilityBill> UtilityBills => Set<UtilityBill>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -33,6 +35,9 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
         modelBuilder.Entity<User>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<UtilityDebt>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<AdvanceAccount>().HasQueryFilter(e => !e.IsDeleted);
+        modelBuilder.Entity<AidatDefinition>().HasQueryFilter(e => !e.IsDeleted);
+        modelBuilder.Entity<MeterReading>().HasQueryFilter(e => !e.IsDeleted);
+        modelBuilder.Entity<UtilityBill>().HasQueryFilter(e => !e.IsDeleted);
         
         modelBuilder.Entity<Flat>()
             .HasOne(f => f.Owner)

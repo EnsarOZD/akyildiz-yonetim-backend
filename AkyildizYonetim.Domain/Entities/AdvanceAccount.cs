@@ -15,5 +15,5 @@ public class AdvanceAccount : BaseEntity
     public bool IsActive { get; set; } = true;
     
     // Navigation properties
-    public virtual Tenant Tenant { get; set; }
+    public virtual Tenant Tenant { get; set; } = null!;
 } 
