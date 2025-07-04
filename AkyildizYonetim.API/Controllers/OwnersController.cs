@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace AkyildizYonetim.API.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("[controller]")]
 public class OwnersController : ControllerBase
 {
     private readonly IMediator _mediator;

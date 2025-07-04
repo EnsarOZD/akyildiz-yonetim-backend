@@ -9,7 +9,7 @@ using System.Security.Claims;
 namespace AkyildizYonetim.API.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("[controller]")]
 public class AuthController : ControllerBase
 {
     private readonly IMediator _mediator;

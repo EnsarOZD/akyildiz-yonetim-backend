@@ -12,7 +12,7 @@ using System.Text.Json;
 namespace AkyildizYonetim.API.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("[controller]")]
 public class ExpensesController : ControllerBase
 {
     private readonly IMediator _mediator;

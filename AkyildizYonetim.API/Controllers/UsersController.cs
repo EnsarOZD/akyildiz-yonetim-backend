@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 namespace AkyildizYonetim.API.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("[controller]")]
 public class UsersController : ControllerBase
 {
     private readonly IMediator _mediator;
