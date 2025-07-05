@@ -2,10 +2,12 @@ using AkyildizYonetim.Application.Common.Interfaces;
 using AkyildizYonetim.Application.Common.Models;
 using AkyildizYonetim.Domain.Entities;
 using MediatR;
+using AutoMapper;
+using AkyildizYonetim.Application.Payments.Queries.GetPaymentById;
 
 namespace AkyildizYonetim.Application.Payments.Commands.CreatePayment;
 
-public record CreatePaymentCommand : IRequest<Result<Guid>>
+public record CreatePaymentCommand : IRequest<Result<PaymentDto>>
 {
     public decimal Amount { get; init; }
     public PaymentType Type { get; init; }
@@ -17,16 +19,18 @@ public record CreatePaymentCommand : IRequest<Result<Guid>>
     public Guid? TenantId { get; init; }
 }
 
-public class CreatePaymentCommandHandler : IRequestHandler<CreatePaymentCommand, Result<Guid>>
+public class CreatePaymentCommandHandler : IRequestHandler<CreatePaymentCommand, Result<PaymentDto>>
 {
     private readonly IApplicationDbContext _context;
+    private readonly IMapper _mapper;
 
-    public CreatePaymentCommandHandler(IApplicationDbContext context)
+    public CreatePaymentCommandHandler(IApplicationDbContext context, IMapper mapper)
     {
         _context = context;
+        _mapper = mapper;
     }
 
-    public async Task<Result<Guid>> Handle(CreatePaymentCommand request, CancellationToken cancellationToken)
+    public async Task<Result<PaymentDto>> Handle(CreatePaymentCommand request, CancellationToken cancellationToken)
     {
         var payment = new Payment
         {
@@ -45,6 +49,7 @@ public class CreatePaymentCommandHandler : IRequestHandler<CreatePaymentCommand,
         _context.Payments.Add(payment);
         await _context.SaveChangesAsync(cancellationToken);
 
-        return Result<Guid>.Success(payment.Id);
+        var paymentDto = _mapper.Map<PaymentDto>(payment);
+        return Result<PaymentDto>.Success(paymentDto);
     }
 } 

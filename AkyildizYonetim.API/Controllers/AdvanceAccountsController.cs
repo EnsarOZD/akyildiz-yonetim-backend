@@ -1,6 +1,7 @@
 using AkyildizYonetim.Application.AdvanceAccounts.Commands.CreateAdvanceAccount;
 using AkyildizYonetim.Application.AdvanceAccounts.Commands.DeleteAdvanceAccount;
 using AkyildizYonetim.Application.AdvanceAccounts.Commands.UpdateAdvanceAccount;
+using AkyildizYonetim.Application.AdvanceAccounts.Commands.UseAdvanceAccount;
 using AkyildizYonetim.Application.AdvanceAccounts.Queries.GetAdvanceAccountById;
 using AkyildizYonetim.Application.AdvanceAccounts.Queries.GetAdvanceAccounts;
 using MediatR;
@@ -62,5 +63,14 @@ public class AdvanceAccountsController : ControllerBase
     {
         var result = await _mediator.Send(new DeleteAdvanceAccountCommand { Id = id });
         return result.IsSuccess ? NoContent() : NotFound(result.ErrorMessage ?? string.Join(", ", result.Errors));
+    }
+
+    [HttpPost("use")]
+    public async Task<IActionResult> UseAdvanceAccount([FromBody] UseAdvanceAccountCommand command)
+    {
+        var result = await _mediator.Send(command);
+        return result.IsSuccess 
+            ? Ok(result.Data) 
+            : BadRequest(result.ErrorMessage ?? string.Join(", ", result.Errors));
     }
 } 

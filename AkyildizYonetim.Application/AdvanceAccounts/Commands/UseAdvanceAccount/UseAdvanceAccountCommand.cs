@@ -1,0 +1,187 @@
+using AkyildizYonetim.Application.Common.Interfaces;
+using AkyildizYonetim.Application.Common.Models;
+using AkyildizYonetim.Domain.Entities;
+using MediatR;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+
+namespace AkyildizYonetim.Application.AdvanceAccounts.Commands.UseAdvanceAccount;
+
+public record UseAdvanceAccountCommand : IRequest<Result<AdvanceAccountUsageDto>>
+{
+    public Guid TenantId { get; init; }
+    public List<DebtPaymentRequest> DebtPayments { get; init; } = new();
+    public string? Description { get; init; }
+}
+
+public record DebtPaymentRequest
+{
+    public Guid DebtId { get; init; }
+    public decimal Amount { get; init; }
+}
+
+public class UseAdvanceAccountCommandHandler 
+    : IRequestHandler<UseAdvanceAccountCommand, Result<AdvanceAccountUsageDto>>
+{
+    private readonly IApplicationDbContext _context;
+    private readonly ILogger<UseAdvanceAccountCommandHandler> _logger;
+
+    public UseAdvanceAccountCommandHandler(
+        IApplicationDbContext context,
+        ILogger<UseAdvanceAccountCommandHandler> logger)
+    {
+        _context = context;
+        _logger = logger;
+    }
+
+    public async Task<Result<AdvanceAccountUsageDto>> Handle(
+        UseAdvanceAccountCommand request, 
+        CancellationToken cancellationToken)
+    {
+        using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+        
+        try
+        {
+            // 1. Avans hesabını kontrol et
+            var advanceAccount = await _context.AdvanceAccounts
+                .FirstOrDefaultAsync(aa => aa.TenantId == request.TenantId && !aa.IsDeleted, cancellationToken);
+
+            if (advanceAccount == null)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                return Result<AdvanceAccountUsageDto>.Failure("Avans hesabı bulunamadı.");
+            }
+
+            var totalRequestedAmount = request.DebtPayments.Sum(dp => dp.Amount);
+            
+            if (advanceAccount.Balance < totalRequestedAmount)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                return Result<AdvanceAccountUsageDto>.Failure(
+                    $"Yetersiz bakiye. Mevcut: {advanceAccount.Balance:C}, İstenen: {totalRequestedAmount:C}");
+            }
+
+            // 2. Sanal ödeme oluştur (avans kullanımı için)
+            var virtualPayment = new Payment
+            {
+                Id = Guid.NewGuid(),
+                Amount = totalRequestedAmount,
+                Type = PaymentType.Utility, // Avans kullanımı
+                Status = PaymentStatus.Completed,
+                PaymentDate = DateTime.UtcNow,
+                Description = request.Description ?? "Avans hesabından borç ödeme",
+                ReceiptNumber = $"AVANS-{DateTime.UtcNow:yyyyMMdd-HHmmss}",
+                TenantId = request.TenantId,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            _context.Payments.Add(virtualPayment);
+
+            var paymentResults = new List<DebtPaymentResult>();
+            decimal remainingAdvanceBalance = advanceAccount.Balance;
+
+            // 3. Her borç için ödeme yap
+            foreach (var debtPayment in request.DebtPayments)
+            {
+                var debt = await _context.UtilityDebts
+                    .FirstOrDefaultAsync(d => d.Id == debtPayment.DebtId && !d.IsDeleted, cancellationToken);
+
+                if (debt == null)
+                {
+                    await transaction.RollbackAsync(cancellationToken);
+                    return Result<AdvanceAccountUsageDto>.Failure($"Borç bulunamadı: {debtPayment.DebtId}");
+                }
+
+                if (debt.TenantId != request.TenantId)
+                {
+                    await transaction.RollbackAsync(cancellationToken);
+                    return Result<AdvanceAccountUsageDto>.Failure($"Borç bu kiracıya ait değil: {debtPayment.DebtId}");
+                }
+
+                var paymentAmount = Math.Min(debtPayment.Amount, debt.RemainingAmount);
+                
+                if (paymentAmount > 0)
+                {
+                    // PaymentDebt kaydı oluştur
+                    var paymentDebt = new PaymentDebt
+                    {
+                        Id = Guid.NewGuid(),
+                        PaymentId = virtualPayment.Id,
+                        DebtId = debt.Id,
+                        PaidAmount = paymentAmount,
+                        CreatedAt = DateTime.UtcNow
+                    };
+
+                    _context.PaymentDebts.Add(paymentDebt);
+
+                    // Borç durumunu güncelle
+                    debt.PaidAmount = (debt.PaidAmount ?? 0) + paymentAmount;
+                    debt.RemainingAmount = debt.Amount - debt.PaidAmount.Value;
+                    debt.Status = debt.RemainingAmount <= 0 ? DebtStatus.Paid : DebtStatus.Partial;
+                    debt.UpdatedAt = DateTime.UtcNow;
+
+                    paymentResults.Add(new DebtPaymentResult
+                    {
+                        DebtId = debt.Id,
+                        DebtDescription = debt.Description ?? $"{debt.Type} - {debt.PeriodYear}/{debt.PeriodMonth}",
+                        PaidAmount = paymentAmount,
+                        RemainingDebtAmount = debt.RemainingAmount,
+                        DebtStatus = debt.Status
+                    });
+                }
+            }
+
+            // 4. Avans hesabı bakiyesini güncelle
+            advanceAccount.Balance -= totalRequestedAmount;
+            advanceAccount.UpdatedAt = DateTime.UtcNow;
+
+            // 5. Değişiklikleri kaydet
+            await _context.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+
+            _logger.LogInformation("Avans hesabı kullanıldı: TenantId={TenantId}, Amount={Amount}, Balance={Balance}", 
+                request.TenantId, totalRequestedAmount, advanceAccount.Balance);
+
+            var result = new AdvanceAccountUsageDto
+            {
+                PaymentId = virtualPayment.Id,
+                TenantId = request.TenantId,
+                TotalAmount = totalRequestedAmount,
+                PreviousBalance = advanceAccount.Balance + totalRequestedAmount,
+                NewBalance = advanceAccount.Balance,
+                DebtPayments = paymentResults,
+                Description = virtualPayment.Description,
+                PaymentDate = virtualPayment.PaymentDate
+            };
+
+            return Result<AdvanceAccountUsageDto>.Success(result);
+        }
+        catch (Exception ex)
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            _logger.LogError(ex, "Avans hesabı kullanılırken hata oluştu: TenantId={TenantId}", request.TenantId);
+            return Result<AdvanceAccountUsageDto>.Failure($"Avans hesabı kullanılamadı: {ex.Message}");
+        }
+    }
+}
+
+public class AdvanceAccountUsageDto
+{
+    public Guid PaymentId { get; set; }
+    public Guid TenantId { get; set; }
+    public decimal TotalAmount { get; set; }
+    public decimal PreviousBalance { get; set; }
+    public decimal NewBalance { get; set; }
+    public List<DebtPaymentResult> DebtPayments { get; set; } = new();
+    public string? Description { get; set; }
+    public DateTime PaymentDate { get; set; }
+}
+
+public class DebtPaymentResult
+{
+    public Guid DebtId { get; set; }
+    public string DebtDescription { get; set; } = string.Empty;
+    public decimal PaidAmount { get; set; }
+    public decimal RemainingDebtAmount { get; set; }
+    public DebtStatus DebtStatus { get; set; }
+} 

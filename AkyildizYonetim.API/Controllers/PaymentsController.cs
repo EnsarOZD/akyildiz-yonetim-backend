@@ -6,6 +6,7 @@ using AkyildizYonetim.Application.Payments.Queries.GetPayments;
 using AkyildizYonetim.Domain.Entities;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 
 namespace AkyildizYonetim.API.Controllers;
 
@@ -53,7 +54,18 @@ public class PaymentsController : ControllerBase
     public async Task<IActionResult> CreatePayment([FromBody] CreatePaymentCommand command)
     {
         var result = await _mediator.Send(command);
-        return result.IsSuccess ? CreatedAtAction(nameof(GetPaymentById), new { id = result.Data }, null) : BadRequest(result.ErrorMessage ?? string.Join(", ", result.Errors));
+        return result.IsSuccess
+            ? CreatedAtAction(nameof(GetPaymentById), new { id = result.Data.Id }, result.Data)
+            : BadRequest(result.ErrorMessage ?? string.Join(", ", result.Errors));
+    }
+
+    [HttpPost("with-allocation")]
+    public async Task<IActionResult> CreatePaymentWithAllocation([FromBody] CreatePaymentWithDebtAllocationCommand command)
+    {
+        var result = await _mediator.Send(command);
+        return result.IsSuccess
+            ? CreatedAtAction(nameof(GetPaymentById), new { id = result.Data.Payment.Id }, result.Data)
+            : BadRequest(result.ErrorMessage ?? string.Join(", ", result.Errors));
     }
 
     [HttpPut("{id}")]

@@ -23,6 +23,8 @@ public class UtilityDebt : BaseEntity
     public decimal Amount { get; set; }
     public DebtStatus Status { get; set; } = DebtStatus.Unpaid;
     public decimal? PaidAmount { get; set; }
+    public decimal RemainingAmount { get; set; }
+    public DateTime DueDate { get; set; }
     public DateTime? PaidDate { get; set; }
     public string? Description { get; set; }
     public Guid? TenantId { get; set; }
@@ -31,4 +33,5 @@ public class UtilityDebt : BaseEntity
     public virtual Flat Flat { get; set; } = null!;
     public virtual Tenant? Tenant { get; set; }
     public virtual Owner? Owner { get; set; }
+    public virtual ICollection<PaymentDebt> PaymentDebts { get; set; } = new List<PaymentDebt>();
 } 

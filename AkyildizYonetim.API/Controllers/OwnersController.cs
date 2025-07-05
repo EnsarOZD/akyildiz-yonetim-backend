@@ -55,6 +55,13 @@ public class OwnersController : ControllerBase
         var result = await _mediator.Send(new DeleteOwnerCommand { Id = id });
         return result.IsSuccess ? NoContent() : NotFound(result.ErrorMessage ?? string.Join(", ", result.Errors));
     }
+
+    [HttpGet("dues")]
+    public async Task<IActionResult> GetOwnerDues()
+    {
+        // For now, return empty array since this feature is not fully implemented
+        return Ok(new List<object>());
+    }
 }
 
 public class CreateOwnerRequest

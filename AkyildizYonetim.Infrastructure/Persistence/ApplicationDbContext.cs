@@ -21,6 +21,8 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
     public DbSet<AidatDefinition> AidatDefinitions => Set<AidatDefinition>();
     public DbSet<MeterReading> MeterReadings => Set<MeterReading>();
     public DbSet<UtilityBill> UtilityBills => Set<UtilityBill>();
+    public DbSet<PaymentDebt> PaymentDebts => Set<PaymentDebt>();
+    public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -38,6 +40,8 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
         modelBuilder.Entity<AidatDefinition>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<MeterReading>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<UtilityBill>().HasQueryFilter(e => !e.IsDeleted);
+        modelBuilder.Entity<PaymentDebt>().HasQueryFilter(e => !e.IsDeleted);
+        modelBuilder.Entity<AuditLog>().HasQueryFilter(e => !e.IsDeleted);
         
         modelBuilder.Entity<Flat>()
             .HasOne(f => f.Owner)
@@ -66,6 +70,16 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
             .WithMany()
             .HasForeignKey(aa => aa.TenantId)
             .OnDelete(DeleteBehavior.Restrict);
+        
+        modelBuilder.Entity<PaymentDebt>(entity =>
+        {
+            entity.HasKey(pd => pd.Id);
+            entity.HasOne(pd => pd.Payment)
+                  .WithMany(p => p.PaymentDebts)
+                  .HasForeignKey(pd => pd.PaymentId);
+            // İhtiyaca göre UtilityDebt ile ilişkiyi de ekleyebilirsin
+            // entity.HasOne<UtilityDebt>().WithMany(d => d.PaymentDebts).HasForeignKey(pd => pd.DebtId);
+        });
         
         base.OnModelCreating(modelBuilder);
     }

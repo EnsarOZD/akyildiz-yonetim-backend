@@ -16,6 +16,9 @@ public interface IApplicationDbContext
     DbSet<AidatDefinition> AidatDefinitions { get; }
     DbSet<MeterReading> MeterReadings { get; }
     DbSet<UtilityBill> UtilityBills { get; }
+    DbSet<PaymentDebt> PaymentDebts { get; }
+    DbSet<AuditLog> AuditLogs { get; }
     
+    Microsoft.EntityFrameworkCore.Infrastructure.DatabaseFacade Database { get; }
     Task<int> SaveChangesAsync(CancellationToken cancellationToken);
 } 
