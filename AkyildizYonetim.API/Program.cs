@@ -11,6 +11,7 @@ using Microsoft.OpenApi.Models;
 using AkyildizYonetim.Domain.Entities;
 using System.Text.Json.Serialization;
 using System.Text;
+using Microsoft.Extensions.Logging;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -75,10 +76,41 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-// CORS politikasını ekle - Development için tüm origin'lere izin ver
+// CORS politikasını ekle - Production için spesifik origin'lere izin ver
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
+    {
+        policy.WithOrigins(
+                "http://www.akyildizyonetim.com",
+                "https://www.akyildizyonetim.com",
+                "http://localhost:3000",
+                "http://localhost:5173",
+                "http://localhost:8080"
+              )
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials()
+              .SetIsOriginAllowedToAllowWildcardSubdomains()
+              .WithExposedHeaders("Content-Disposition", "Content-Length", "Content-Type", "Access-Control-Allow-Origin", "Access-Control-Allow-Methods", "Access-Control-Allow-Headers")
+              .SetIsOriginAllowed(origin => 
+              {
+                  return origin.Contains("akyildizyonetim.com") || 
+                         origin.Contains("localhost") || 
+                         origin.Contains("127.0.0.1");
+              });
+    });
+    
+    // Development için daha geniş CORS politikası
+    options.AddPolicy("Development", policy =>
+    {
+        policy.AllowAnyOrigin()
+              .AllowAnyHeader()
+              .AllowAnyMethod();
+    });
+    
+    // Fallback CORS policy for any issues
+    options.AddPolicy("Fallback", policy =>
     {
         policy.AllowAnyOrigin()
               .AllowAnyHeader()
@@ -734,8 +766,51 @@ using (var scope = app.Services.CreateScope())
 app.UseSwagger();
 app.UseSwaggerUI();
 
-// CORS middleware'ini UseHttpsRedirection'dan önce ekle
-app.UseCors("AllowAll");
+// CORS middleware'ini en başta ekle
+if (builder.Environment.IsDevelopment())
+{
+    app.UseCors("Development");
+}
+else
+{
+    app.UseCors("AllowAll");
+}
+
+// Fallback CORS middleware for any issues
+app.UseCors("Fallback");
+
+// CORS preflight requests için ek middleware
+app.Use(async (context, next) =>
+{
+    if (context.Request.Method == "OPTIONS")
+    {
+        var origin = context.Request.Headers["Origin"].FirstOrDefault();
+        if (!string.IsNullOrEmpty(origin) && (origin.Contains("akyildizyonetim.com") || origin.Contains("localhost")))
+        {
+            context.Response.Headers.Add("Access-Control-Allow-Origin", origin);
+        }
+        context.Response.Headers.Add("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+        context.Response.Headers.Add("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With");
+        context.Response.Headers.Add("Access-Control-Allow-Credentials", "true");
+        context.Response.StatusCode = 200;
+        await context.Response.CompleteAsync();
+        return;
+    }
+    
+    // Log all requests for debugging
+    var logger = context.RequestServices.GetService<ILogger<Program>>();
+    logger?.LogInformation($"Request: {context.Request.Method} {context.Request.Path} from {context.Request.Headers["Origin"]}");
+    
+    // Add CORS headers to all responses
+    var responseOrigin = context.Request.Headers["Origin"].FirstOrDefault();
+    if (!string.IsNullOrEmpty(responseOrigin) && (responseOrigin.Contains("akyildizyonetim.com") || responseOrigin.Contains("localhost")))
+    {
+        context.Response.Headers.Add("Access-Control-Allow-Origin", responseOrigin);
+    }
+    context.Response.Headers.Add("Access-Control-Allow-Credentials", "true");
+    
+    await next();
+});
 
 // Authentication ve Authorization middleware'lerini ekle
 app.UseAuthentication();
