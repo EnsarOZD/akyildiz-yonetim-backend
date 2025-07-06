@@ -10,33 +10,46 @@ public class TenantConfiguration : IEntityTypeConfiguration<Tenant>
     {
         builder.HasKey(t => t.Id);
         
-        builder.Property(t => t.FirstName)
+        // İş Yeri Bilgileri
+        builder.Property(t => t.CompanyName)
+            .IsRequired()
+            .HasMaxLength(200);
+            
+        builder.Property(t => t.BusinessType)
             .IsRequired()
             .HasMaxLength(100);
             
-        builder.Property(t => t.LastName)
+        builder.Property(t => t.TaxNumber)
+            .IsRequired()
+            .HasMaxLength(20);
+        
+        // İletişim Kişisi Bilgileri
+        builder.Property(t => t.ContactPersonName)
             .IsRequired()
             .HasMaxLength(100);
             
-        builder.Property(t => t.PhoneNumber)
+        builder.Property(t => t.ContactPersonPhone)
             .IsRequired()
             .HasMaxLength(20);
             
-        builder.Property(t => t.Email)
-            .IsRequired()
+        builder.Property(t => t.ContactPersonEmail)
             .HasMaxLength(255);
-            
-        builder.Property(t => t.ApartmentNumber)
-            .IsRequired()
-            .HasMaxLength(50);
-            
-        builder.Property(t => t.LeaseStartDate)
+        
+        // Sözleşme Bilgileri
+        builder.Property(t => t.ContractStartDate);
+        builder.Property(t => t.ContractEndDate);
+        
+        // Aidat ve Borç Yönetimi
+        builder.Property(t => t.MonthlyAidat)
+            .HasPrecision(18, 2)
             .IsRequired();
             
-        builder.Property(t => t.LeaseEndDate);
+        builder.Property(t => t.ElectricityRate)
+            .HasPrecision(10, 4)
+            .IsRequired();
             
-        builder.Property(t => t.MonthlyRent)
-            .HasPrecision(18, 2)
+        builder.Property(t => t.WaterRate)
+            .HasPrecision(10, 4)
             .IsRequired();
             
         builder.Property(t => t.IsActive)
@@ -52,9 +65,26 @@ public class TenantConfiguration : IEntityTypeConfiguration<Tenant>
         builder.Property(t => t.UpdatedAt);
         
         // Indexes
-        builder.HasIndex(t => t.Email).IsUnique();
-        builder.HasIndex(t => t.ApartmentNumber).IsUnique();
-        builder.HasIndex(t => t.PhoneNumber);
+        builder.HasIndex(t => t.CompanyName);
+        builder.HasIndex(t => t.TaxNumber).IsUnique();
+        builder.HasIndex(t => t.ContactPersonEmail);
+        builder.HasIndex(t => t.ContactPersonPhone);
         builder.HasIndex(t => t.IsActive);
+        
+        // Relationships
+        builder.HasMany(t => t.Flats)
+            .WithOne(f => f.Tenant)
+            .HasForeignKey(f => f.TenantId)
+            .OnDelete(DeleteBehavior.Restrict);
+            
+        builder.HasMany(t => t.Payments)
+            .WithOne(p => p.Tenant)
+            .HasForeignKey(p => p.TenantId)
+            .OnDelete(DeleteBehavior.Restrict);
+            
+        builder.HasMany(t => t.Users)
+            .WithOne(u => u.Tenant)
+            .HasForeignKey(u => u.TenantId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 } 

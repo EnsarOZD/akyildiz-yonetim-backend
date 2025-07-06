@@ -2,15 +2,25 @@ namespace AkyildizYonetim.Domain.Entities;
 
 public class Tenant : BaseEntity
 {
-    public string FirstName { get; set; } = string.Empty;
-    public string LastName { get; set; } = string.Empty;
-    public string PhoneNumber { get; set; } = string.Empty;
-    public string Email { get; set; } = string.Empty;
-    public string ApartmentNumber { get; set; } = string.Empty;
-    public DateTime LeaseStartDate { get; set; }
-    public DateTime? LeaseEndDate { get; set; }
-    public decimal MonthlyRent { get; set; }
+    // İş Yeri Bilgileri
+    public string CompanyName { get; set; } = string.Empty;
+    public string BusinessType { get; set; } = string.Empty; // Ticaret, Hizmet, Üretim vs.
+    public string TaxNumber { get; set; } = string.Empty;
+    
+    // İletişim Kişisi Bilgileri
+    public string ContactPersonName { get; set; } = string.Empty;
+    public string ContactPersonPhone { get; set; } = string.Empty;
+    public string ContactPersonEmail { get; set; } = string.Empty;
+    
+    // Aidat ve Borç Yönetimi
+    public decimal MonthlyAidat { get; set; } // Aylık aidat
+    public decimal ElectricityRate { get; set; } // Elektrik tarifesi (kWh başına)
+    public decimal WaterRate { get; set; } // Su tarifesi (m³ başına)
     public bool IsActive { get; set; } = true;
+    
+    // Sözleşme Bilgileri (Opsiyonel)
+    public DateTime? ContractStartDate { get; set; }
+    public DateTime? ContractEndDate { get; set; }
     
     // Navigation properties
     public virtual ICollection<Payment> Payments { get; set; } = new List<Payment>();

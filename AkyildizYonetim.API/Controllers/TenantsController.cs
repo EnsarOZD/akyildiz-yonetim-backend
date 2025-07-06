@@ -17,9 +17,9 @@ public class TenantsController : ControllerBase
     public TenantsController(IMediator mediator) { _mediator = mediator; }
 
     [HttpGet]
-    public async Task<IActionResult> GetTenants([FromQuery] bool? isActive, [FromQuery] string? searchTerm, [FromQuery] DateTime? period)
+    public async Task<IActionResult> GetTenants([FromQuery] bool? isActive, [FromQuery] string? searchTerm, [FromQuery] DateTime? period, [FromQuery] bool? showOnlyOccupied, [FromQuery] int? floor, [FromQuery] string? category)
     {
-        var result = await _mediator.Send(new GetTenantsQuery { IsActive = isActive, SearchTerm = searchTerm, Period = period });
+        var result = await _mediator.Send(new GetTenantsQuery { IsActive = isActive, SearchTerm = searchTerm, Period = period, ShowOnlyOccupied = showOnlyOccupied, Floor = floor, Category = category });
         return result.IsSuccess ? Ok(result.Data) : BadRequest(result.ErrorMessage ?? string.Join(", ", result.Errors));
     }
 
@@ -58,6 +58,13 @@ public class TenantsController : ControllerBase
     {
         var result = await _mediator.Send(new DeleteTenantCommand { Id = id });
         return result.IsSuccess ? NoContent() : NotFound(result.ErrorMessage ?? string.Join(", ", result.Errors));
+    }
+
+    [HttpGet("available-flats")]
+    public async Task<IActionResult> GetAvailableFlats([FromQuery] int? floor, [FromQuery] string? category, [FromQuery] string? searchTerm)
+    {
+        var result = await _mediator.Send(new GetAvailableFlatsQuery { Floor = floor, Category = category, SearchTerm = searchTerm });
+        return result.IsSuccess ? Ok(result.Data) : BadRequest(result.ErrorMessage ?? string.Join(", ", result.Errors));
     }
 }
 

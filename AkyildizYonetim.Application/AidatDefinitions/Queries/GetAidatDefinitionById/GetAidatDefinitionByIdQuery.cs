@@ -33,7 +33,7 @@ public class GetAidatDefinitionByIdQueryHandler : IRequestHandler<GetAidatDefini
         {
             Id = aidatDefinition.Id,
             TenantId = aidatDefinition.TenantId,
-            TenantName = $"{aidatDefinition.Tenant.FirstName} {aidatDefinition.Tenant.LastName}",
+            TenantName = aidatDefinition.Tenant?.CompanyName ?? "Bilinmiyor",
             Unit = aidatDefinition.Unit,
             Year = aidatDefinition.Year,
             Amount = aidatDefinition.Amount,

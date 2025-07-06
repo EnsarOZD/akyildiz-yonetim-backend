@@ -177,12 +177,16 @@ using (var scope = app.Services.CreateScope())
         {
             Id = Guid.NewGuid(),
             Number = "A1",
+            UnitNumber = "A-101",
             Floor = 1,
+            UnitArea = 120.50m,
             OwnerId = owner1.Id,
             TenantId = null,
-            ApartmentNumber = "A1",
             RoomCount = 3,
             IsActive = true,
+            IsOccupied = false,
+            Category = "Normal",
+            ShareCount = 1,
             CreatedAt = DateTime.UtcNow
         };
         
@@ -190,12 +194,16 @@ using (var scope = app.Services.CreateScope())
         {
             Id = Guid.NewGuid(),
             Number = "A2",
+            UnitNumber = "A-102",
             Floor = 1,
+            UnitArea = 95.30m,
             OwnerId = owner2.Id,
             TenantId = null,
-            ApartmentNumber = "A2",
             RoomCount = 2,
             IsActive = true,
+            IsOccupied = false,
+            Category = "Normal",
+            ShareCount = 1,
             CreatedAt = DateTime.UtcNow
         };
         
@@ -203,30 +211,37 @@ using (var scope = app.Services.CreateScope())
         {
             Id = Guid.NewGuid(),
             Number = "A3",
+            UnitNumber = "A-201",
             Floor = 2,
+            UnitArea = 150.75m,
             OwnerId = owner3.Id,
             TenantId = null,
-            ApartmentNumber = "A3",
             RoomCount = 4,
             IsActive = true,
+            IsOccupied = false,
+            Category = "Normal",
+            ShareCount = 1,
             CreatedAt = DateTime.UtcNow
         };
         
         context.Flats.AddRange(flat1, flat2, flat3);
         await context.SaveChangesAsync();
         
-        // Kiracılar oluştur
+        // İş Hanı Kiracıları oluştur
         var tenant1 = new Tenant
         {
             Id = Guid.NewGuid(),
-            FirstName = "Ali",
-            LastName = "Özkan",
-            PhoneNumber = "0535 456 78 90",
-            Email = "ali.ozkan@email.com",
-            ApartmentNumber = "A1",
-            LeaseStartDate = DateTime.Now.AddMonths(-6),
-            LeaseEndDate = DateTime.Now.AddMonths(6),
-            MonthlyRent = 2500.00m,
+            CompanyName = "ABC Ticaret Ltd. Şti.",
+            BusinessType = "Ticaret",
+            TaxNumber = "1234567890",
+            ContactPersonName = "Ali Özkan",
+            ContactPersonPhone = "0535 456 78 90",
+            ContactPersonEmail = "ali.ozkan@abc.com",
+            MonthlyAidat = 500.00m,
+            ElectricityRate = 1.50m,
+            WaterRate = 8.00m,
+            ContractStartDate = DateTime.Now.AddMonths(-6),
+            ContractEndDate = DateTime.Now.AddMonths(6),
             IsActive = true,
             CreatedAt = DateTime.UtcNow
         };
@@ -234,14 +249,17 @@ using (var scope = app.Services.CreateScope())
         var tenant2 = new Tenant
         {
             Id = Guid.NewGuid(),
-            FirstName = "Ayşe",
-            LastName = "Çelik",
-            PhoneNumber = "0536 567 89 01",
-            Email = "ayse.celik@email.com",
-            ApartmentNumber = "A2",
-            LeaseStartDate = DateTime.Now.AddMonths(-3),
-            LeaseEndDate = DateTime.Now.AddMonths(9),
-            MonthlyRent = 2800.00m,
+            CompanyName = "XYZ Hizmet A.Ş.",
+            BusinessType = "Hizmet",
+            TaxNumber = "9876543210",
+            ContactPersonName = "Ayşe Çelik",
+            ContactPersonPhone = "0536 567 89 01",
+            ContactPersonEmail = "ayse.celik@xyz.com",
+            MonthlyAidat = 450.00m,
+            ElectricityRate = 1.45m,
+            WaterRate = 7.50m,
+            ContractStartDate = DateTime.Now.AddMonths(-3),
+            ContractEndDate = DateTime.Now.AddMonths(9),
             IsActive = true,
             CreatedAt = DateTime.UtcNow
         };
@@ -249,14 +267,17 @@ using (var scope = app.Services.CreateScope())
         var tenant3 = new Tenant
         {
             Id = Guid.NewGuid(),
-            FirstName = "Hasan",
-            LastName = "Arslan",
-            PhoneNumber = "0537 678 90 12",
-            Email = "hasan.arslan@email.com",
-            ApartmentNumber = "A3",
-            LeaseStartDate = DateTime.Now.AddMonths(-1),
-            LeaseEndDate = DateTime.Now.AddMonths(11),
-            MonthlyRent = 3000.00m,
+            CompanyName = "DEF Üretim Ltd. Şti.",
+            BusinessType = "Üretim",
+            TaxNumber = "5556667778",
+            ContactPersonName = "Hasan Arslan",
+            ContactPersonPhone = "0537 678 90 12",
+            ContactPersonEmail = "hasan.arslan@def.com",
+            MonthlyAidat = 600.00m,
+            ElectricityRate = 1.60m,
+            WaterRate = 8.50m,
+            ContractStartDate = DateTime.Now.AddMonths(-1),
+            ContractEndDate = DateTime.Now.AddMonths(11),
             IsActive = true,
             CreatedAt = DateTime.UtcNow
         };
@@ -264,10 +285,19 @@ using (var scope = app.Services.CreateScope())
         context.Tenants.AddRange(tenant1, tenant2, tenant3);
         await context.SaveChangesAsync();
         
-        // Kiracıları dairelere ata
+        // Kiracıları dairelere ata ve dolu olarak işaretle
         flat1.TenantId = tenant1.Id;
+        flat1.IsOccupied = true;
+        flat1.BusinessType = "Ticaret";
+        
         flat2.TenantId = tenant2.Id;
+        flat2.IsOccupied = true;
+        flat2.BusinessType = "Hizmet";
+        
         flat3.TenantId = tenant3.Id;
+        flat3.IsOccupied = true;
+        flat3.BusinessType = "Üretim";
+        
         await context.SaveChangesAsync();
         
         await context.SaveChangesAsync();

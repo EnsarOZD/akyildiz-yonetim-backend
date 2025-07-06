@@ -58,13 +58,17 @@ public class TestBase
         var tenant = new Tenant
         {
             Id = Guid.NewGuid(),
-            FirstName = "Test",
-            LastName = "Tenant",
-            Email = "test@example.com",
-            PhoneNumber = "5551234567",
-            ApartmentNumber = "A1",
-            LeaseStartDate = DateTime.UtcNow.AddDays(-30),
-            MonthlyRent = 1000,
+            CompanyName = "Test Company",
+            BusinessType = "Ticaret",
+            TaxNumber = "1234567890",
+            ContactPersonName = "Test Contact",
+            ContactPersonPhone = "5551234567",
+            ContactPersonEmail = "test@example.com",
+            MonthlyAidat = 150,
+            ElectricityRate = 0.8m,
+            WaterRate = 0.5m,
+            ContractStartDate = DateTime.UtcNow.AddDays(-30),
+            ContractEndDate = DateTime.UtcNow.AddDays(335),
             IsActive = true,
             CreatedAt = DateTime.UtcNow
         };

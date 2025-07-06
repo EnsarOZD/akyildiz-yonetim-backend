@@ -37,7 +37,7 @@ public class GetAdvanceAccountByIdQueryHandler : IRequestHandler<GetAdvanceAccou
             {
                 Id = advanceAccount.Id,
                 TenantId = advanceAccount.TenantId,
-                TenantName = advanceAccount.Tenant?.FirstName != null ? $"{advanceAccount.Tenant.FirstName} {advanceAccount.Tenant.LastName}" : "Bilinmiyor",
+                TenantName = advanceAccount.Tenant?.CompanyName ?? "Bilinmiyor",
                 Balance = advanceAccount.Balance,
                 Description = advanceAccount.Description,
                 IsActive = advanceAccount.IsActive,

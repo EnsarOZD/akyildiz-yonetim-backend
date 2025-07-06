@@ -140,7 +140,7 @@ public class UtilityDebtsController : ControllerBase
                         PeriodMonth = periodDate.Month,
                         Amount = amountPerTenant,
                         Status = DebtStatus.Unpaid,
-                        Description = $"Ortak {request.UtilityType} Payı - {tenant.FirstName} {tenant.LastName}",
+                        Description = $"Ortak {request.UtilityType} Payı - {tenant.CompanyName}",
                         TenantId = tenant.Id,
                         OwnerId = flat.OwnerId,
                         CreatedAt = DateTime.UtcNow

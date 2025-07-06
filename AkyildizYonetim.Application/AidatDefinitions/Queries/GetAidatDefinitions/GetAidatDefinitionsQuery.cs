@@ -50,7 +50,7 @@ public class GetAidatDefinitionsQueryHandler : IRequestHandler<GetAidatDefinitio
         {
             Id = ad.Id,
             TenantId = ad.TenantId,
-            TenantName = $"{ad.Tenant.FirstName} {ad.Tenant.LastName}",
+            TenantName = ad.Tenant?.CompanyName ?? "Bilinmiyor",
             Unit = ad.Unit,
             Year = ad.Year,
             Amount = ad.Amount,
