@@ -21,9 +21,9 @@ builder.Services.AddEndpointsApiExplorer();
 
 // JWT Authentication
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
-var secretKey = jwtSettings["SecretKey"];
-var issuer = jwtSettings["Issuer"];
-var audience = jwtSettings["Audience"];
+var secretKey = jwtSettings["SecretKey"] ?? throw new InvalidOperationException("JWT SecretKey is not configured");
+var issuer = jwtSettings["Issuer"] ?? throw new InvalidOperationException("JWT Issuer is not configured");
+var audience = jwtSettings["Audience"] ?? throw new InvalidOperationException("JWT Audience is not configured");
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -154,13 +154,17 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    if (builder.Environment.IsProduction())
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    
+    try
     {
-        context.Database.Migrate(); // Render/Production ortamında migration'ı otomatik uygula
-    }
+        if (builder.Environment.IsProduction())
+        {
+            context.Database.Migrate(); // Render/Production ortamında migration'ı otomatik uygula
+        }
 
-    // Owners, Flats, Tenants seed
-    if (!context.Owners.Any())
+        // Owners, Flats, Tenants seed
+        if (!context.Owners.Any())
     {
         var owner1 = new Owner
         {
@@ -334,24 +338,24 @@ using (var scope = app.Services.CreateScope())
         
         await context.SaveChangesAsync();
         
-        Console.WriteLine("✅ Seed data başarıyla eklendi!");
-        Console.WriteLine($"   - {context.Owners.Count()} mal sahibi");
-        Console.WriteLine($"   - {context.Tenants.Count()} kiracı");
-        Console.WriteLine($"   - {context.Flats.Count()} daire");
-        Console.WriteLine($"   - {context.Users.Count()} kullanıcı");
-        Console.WriteLine($"   - {context.AidatDefinitions.Count()} aidat tanımı");
-        Console.WriteLine($"   - {context.Expenses.Count()} gider");
-        Console.WriteLine($"   - {context.Payments.Count()} ödeme");
-        Console.WriteLine($"   - {context.UtilityDebts.Count()} borç");
-        Console.WriteLine($"   - {context.AdvanceAccounts.Count()} avans hesabı");
-        Console.WriteLine($"   - {context.MeterReadings.Count()} sayaç okuması");
-        Console.WriteLine($"   - {context.UtilityBills.Count()} genel fatura");
+        logger.LogInformation("✅ Seed data başarıyla eklendi!");
+        logger.LogInformation($"   - {context.Owners.Count()} mal sahibi");
+        logger.LogInformation($"   - {context.Tenants.Count()} kiracı");
+        logger.LogInformation($"   - {context.Flats.Count()} daire");
+        logger.LogInformation($"   - {context.Users.Count()} kullanıcı");
+        logger.LogInformation($"   - {context.AidatDefinitions.Count()} aidat tanımı");
+        logger.LogInformation($"   - {context.Expenses.Count()} gider");
+        logger.LogInformation($"   - {context.Payments.Count()} ödeme");
+        logger.LogInformation($"   - {context.UtilityDebts.Count()} borç");
+        logger.LogInformation($"   - {context.AdvanceAccounts.Count()} avans hesabı");
+        logger.LogInformation($"   - {context.MeterReadings.Count()} sayaç okuması");
+        logger.LogInformation($"   - {context.UtilityBills.Count()} genel fatura");
         
         // Kullanıcıları listele
         var users = await context.Users.ToListAsync();
         foreach (var user in users)
         {
-            Console.WriteLine($"   - Kullanıcı: {user.Email} ({user.Role})");
+            logger.LogInformation($"   - Kullanıcı: {user.Email} ({user.Role})");
         }
     }
 
@@ -428,44 +432,61 @@ using (var scope = app.Services.CreateScope())
         var tenants = context.Tenants.ToList();
         if (tenants.Any())
         {
-            var aidat1 = new AidatDefinition
-            {
-                Id = Guid.NewGuid(),
-                TenantId = tenants[0].Id,
-                Unit = "A1",
-                Year = 2024,
-                Amount = 500.00m,
-                VatIncludedAmount = 600.00m,
-                IsActive = true,
-                CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc)
-            };
+            var aidats = new List<AidatDefinition>();
             
-            var aidat2 = new AidatDefinition
+            // İlk tenant için aidat tanımı
+            if (tenants.Count > 0)
             {
-                Id = Guid.NewGuid(),
-                TenantId = tenants[1].Id,
-                Unit = "A2",
-                Year = 2024,
-                Amount = 500.00m,
-                VatIncludedAmount = 600.00m,
-                IsActive = true,
-                CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc)
-            };
+                aidats.Add(new AidatDefinition
+                {
+                    Id = Guid.NewGuid(),
+                    TenantId = tenants[0].Id,
+                    Unit = "A1",
+                    Year = 2024,
+                    Amount = 500.00m,
+                    VatIncludedAmount = 600.00m,
+                    IsActive = true,
+                    CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc)
+                });
+            }
             
-            var aidat3 = new AidatDefinition
+            // İkinci tenant için aidat tanımı (varsa)
+            if (tenants.Count > 1)
             {
-                Id = Guid.NewGuid(),
-                TenantId = tenants[2].Id,
-                Unit = "A3",
-                Year = 2024,
-                Amount = 500.00m,
-                VatIncludedAmount = 600.00m,
-                IsActive = true,
-                CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc)
-            };
+                aidats.Add(new AidatDefinition
+                {
+                    Id = Guid.NewGuid(),
+                    TenantId = tenants[1].Id,
+                    Unit = "A2",
+                    Year = 2024,
+                    Amount = 500.00m,
+                    VatIncludedAmount = 600.00m,
+                    IsActive = true,
+                    CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc)
+                });
+            }
             
-            context.AidatDefinitions.AddRange(aidat1, aidat2, aidat3);
-            await context.SaveChangesAsync();
+            // Üçüncü tenant için aidat tanımı (varsa)
+            if (tenants.Count > 2)
+            {
+                aidats.Add(new AidatDefinition
+                {
+                    Id = Guid.NewGuid(),
+                    TenantId = tenants[2].Id,
+                    Unit = "A3",
+                    Year = 2024,
+                    Amount = 500.00m,
+                    VatIncludedAmount = 600.00m,
+                    IsActive = true,
+                    CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc)
+                });
+            }
+            
+            if (aidats.Any())
+            {
+                context.AidatDefinitions.AddRange(aidats);
+                await context.SaveChangesAsync();
+            }
         }
     }
 
@@ -475,47 +496,64 @@ using (var scope = app.Services.CreateScope())
         var owners = context.Owners.ToList();
         if (owners.Any())
         {
-            var expense1 = new Expense
-            {
-                Id = Guid.NewGuid(),
-                Title = "Elektrik Faturası - Ocak 2024",
-                Amount = 1200.00m,
-                Type = ExpenseType.Electricity,
-                ExpenseDate = new DateTime(2024, 1, 15),
-                Description = "Ocak ayı elektrik faturası",
-                ReceiptNumber = "ELK-2024-001",
-                OwnerId = owners[0].Id,
-                CreatedAt = DateTime.UtcNow
-            };
+            var expenses = new List<Expense>();
             
-            var expense2 = new Expense
+            // İlk owner için gider
+            if (owners.Count > 0)
             {
-                Id = Guid.NewGuid(),
-                Title = "Su Faturası - Ocak 2024",
-                Amount = 450.00m,
-                Type = ExpenseType.Water,
-                ExpenseDate = new DateTime(2024, 1, 20),
-                Description = "Ocak ayı su faturası",
-                ReceiptNumber = "SU-2024-001",
-                OwnerId = owners[1].Id,
-                CreatedAt = DateTime.UtcNow
-            };
+                expenses.Add(new Expense
+                {
+                    Id = Guid.NewGuid(),
+                    Title = "Elektrik Faturası - Ocak 2024",
+                    Amount = 1200.00m,
+                    Type = ExpenseType.Electricity,
+                    ExpenseDate = new DateTime(2024, 1, 15),
+                    Description = "Ocak ayı elektrik faturası",
+                    ReceiptNumber = "ELK-2024-001",
+                    OwnerId = owners[0].Id,
+                    CreatedAt = DateTime.UtcNow
+                });
+            }
             
-            var expense3 = new Expense
+            // İkinci owner için gider (varsa)
+            if (owners.Count > 1)
             {
-                Id = Guid.NewGuid(),
-                Title = "Temizlik Hizmeti - Ocak 2024",
-                Amount = 800.00m,
-                Type = ExpenseType.Cleaning,
-                ExpenseDate = new DateTime(2024, 1, 25),
-                Description = "Ocak ayı temizlik hizmeti",
-                ReceiptNumber = "TEM-2024-001",
-                OwnerId = owners[2].Id,
-                CreatedAt = DateTime.UtcNow
-            };
+                expenses.Add(new Expense
+                {
+                    Id = Guid.NewGuid(),
+                    Title = "Su Faturası - Ocak 2024",
+                    Amount = 450.00m,
+                    Type = ExpenseType.Water,
+                    ExpenseDate = new DateTime(2024, 1, 20),
+                    Description = "Ocak ayı su faturası",
+                    ReceiptNumber = "SU-2024-001",
+                    OwnerId = owners[1].Id,
+                    CreatedAt = DateTime.UtcNow
+                });
+            }
             
-            context.Expenses.AddRange(expense1, expense2, expense3);
-            await context.SaveChangesAsync();
+            // Üçüncü owner için gider (varsa)
+            if (owners.Count > 2)
+            {
+                expenses.Add(new Expense
+                {
+                    Id = Guid.NewGuid(),
+                    Title = "Temizlik Hizmeti - Ocak 2024",
+                    Amount = 800.00m,
+                    Type = ExpenseType.Cleaning,
+                    ExpenseDate = new DateTime(2024, 1, 25),
+                    Description = "Ocak ayı temizlik hizmeti",
+                    ReceiptNumber = "TEM-2024-001",
+                    OwnerId = owners[2].Id,
+                    CreatedAt = DateTime.UtcNow
+                });
+            }
+            
+            if (expenses.Any())
+            {
+                context.Expenses.AddRange(expenses);
+                await context.SaveChangesAsync();
+            }
         }
     }
 
@@ -527,47 +565,64 @@ using (var scope = app.Services.CreateScope())
         
         if (owners.Any() && tenants.Any())
         {
-            var payment1 = new Payment
-            {
-                Id = Guid.NewGuid(),
-                Amount = 2500.00m,
-                Type = PaymentType.Rent,
-                Status = PaymentStatus.Completed,
-                PaymentDate = new DateTime(2024, 1, 5),
-                Description = "Ocak ayı kira ödemesi",
-                ReceiptNumber = "KIRA-2024-001",
-                TenantId = tenants[0].Id,
-                CreatedAt = DateTime.UtcNow
-            };
+            var payments = new List<Payment>();
             
-            var payment2 = new Payment
+            // İlk tenant için ödeme
+            if (tenants.Count > 0)
             {
-                Id = Guid.NewGuid(),
-                Amount = 2800.00m,
-                Type = PaymentType.Rent,
-                Status = PaymentStatus.Completed,
-                PaymentDate = new DateTime(2024, 1, 5),
-                Description = "Ocak ayı kira ödemesi",
-                ReceiptNumber = "KIRA-2024-002",
-                TenantId = tenants[1].Id,
-                CreatedAt = DateTime.UtcNow
-            };
+                payments.Add(new Payment
+                {
+                    Id = Guid.NewGuid(),
+                    Amount = 2500.00m,
+                    Type = PaymentType.Rent,
+                    Status = PaymentStatus.Completed,
+                    PaymentDate = new DateTime(2024, 1, 5),
+                    Description = "Ocak ayı kira ödemesi",
+                    ReceiptNumber = "KIRA-2024-001",
+                    TenantId = tenants[0].Id,
+                    CreatedAt = DateTime.UtcNow
+                });
+            }
             
-            var payment3 = new Payment
+            // İkinci tenant için ödeme (varsa)
+            if (tenants.Count > 1)
             {
-                Id = Guid.NewGuid(),
-                Amount = 150.00m,
-                Type = PaymentType.Dues,
-                Status = PaymentStatus.Completed,
-                PaymentDate = new DateTime(2024, 1, 10),
-                Description = "Ocak ayı aidat ödemesi",
-                ReceiptNumber = "AIDAT-2024-001",
-                OwnerId = owners[0].Id,
-                CreatedAt = DateTime.UtcNow
-            };
+                payments.Add(new Payment
+                {
+                    Id = Guid.NewGuid(),
+                    Amount = 2800.00m,
+                    Type = PaymentType.Rent,
+                    Status = PaymentStatus.Completed,
+                    PaymentDate = new DateTime(2024, 1, 5),
+                    Description = "Ocak ayı kira ödemesi",
+                    ReceiptNumber = "KIRA-2024-002",
+                    TenantId = tenants[1].Id,
+                    CreatedAt = DateTime.UtcNow
+                });
+            }
             
-            context.Payments.AddRange(payment1, payment2, payment3);
-            await context.SaveChangesAsync();
+            // İlk owner için ödeme
+            if (owners.Count > 0)
+            {
+                payments.Add(new Payment
+                {
+                    Id = Guid.NewGuid(),
+                    Amount = 150.00m,
+                    Type = PaymentType.Dues,
+                    Status = PaymentStatus.Completed,
+                    PaymentDate = new DateTime(2024, 1, 10),
+                    Description = "Ocak ayı aidat ödemesi",
+                    ReceiptNumber = "AIDAT-2024-001",
+                    OwnerId = owners[0].Id,
+                    CreatedAt = DateTime.UtcNow
+                });
+            }
+            
+            if (payments.Any())
+            {
+                context.Payments.AddRange(payments);
+                await context.SaveChangesAsync();
+            }
         }
     }
 
@@ -580,57 +635,74 @@ using (var scope = app.Services.CreateScope())
         
         if (flats.Any() && tenants.Any() && owners.Any())
         {
-            var debt1 = new UtilityDebt
-            {
-                Id = Guid.NewGuid(),
-                FlatId = flats[0].Id,
-                Type = DebtType.Electricity,
-                PeriodYear = 2024,
-                PeriodMonth = 1,
-                Amount = 150.00m,
-                Status = DebtStatus.Unpaid,
-                Description = "Ocak ayı elektrik borcu",
-                TenantId = tenants[0].Id,
-                OwnerId = owners[0].Id,
-                CreatedAt = DateTime.UtcNow
-            };
+            var debts = new List<UtilityDebt>();
             
-            var debt2 = new UtilityDebt
+            // İlk flat, tenant ve owner için borç
+            if (flats.Count > 0 && tenants.Count > 0 && owners.Count > 0)
             {
-                Id = Guid.NewGuid(),
-                FlatId = flats[1].Id,
-                Type = DebtType.Water,
-                PeriodYear = 2024,
-                PeriodMonth = 1,
-                Amount = 80.00m,
-                Status = DebtStatus.Paid,
-                PaidAmount = 80.00m,
-                PaidDate = new DateTime(2024, 1, 15),
-                Description = "Ocak ayı su borcu",
-                TenantId = tenants[1].Id,
-                OwnerId = owners[1].Id,
-                CreatedAt = DateTime.UtcNow
-            };
+                debts.Add(new UtilityDebt
+                {
+                    Id = Guid.NewGuid(),
+                    FlatId = flats[0].Id,
+                    Type = DebtType.Electricity,
+                    PeriodYear = 2024,
+                    PeriodMonth = 1,
+                    Amount = 150.00m,
+                    Status = DebtStatus.Unpaid,
+                    Description = "Ocak ayı elektrik borcu",
+                    TenantId = tenants[0].Id,
+                    OwnerId = owners[0].Id,
+                    CreatedAt = DateTime.UtcNow
+                });
+            }
             
-            var debt3 = new UtilityDebt
+            // İkinci flat, tenant ve owner için borç (varsa)
+            if (flats.Count > 1 && tenants.Count > 1 && owners.Count > 1)
             {
-                Id = Guid.NewGuid(),
-                FlatId = flats[2].Id,
-                Type = DebtType.Aidat,
-                PeriodYear = 2024,
-                PeriodMonth = 1,
-                Amount = 500.00m,
-                Status = DebtStatus.Partial,
-                PaidAmount = 300.00m,
-                PaidDate = new DateTime(2024, 1, 10),
-                Description = "Ocak ayı aidat borcu",
-                TenantId = tenants[2].Id,
-                OwnerId = owners[2].Id,
-                CreatedAt = DateTime.UtcNow
-            };
+                debts.Add(new UtilityDebt
+                {
+                    Id = Guid.NewGuid(),
+                    FlatId = flats[1].Id,
+                    Type = DebtType.Water,
+                    PeriodYear = 2024,
+                    PeriodMonth = 1,
+                    Amount = 80.00m,
+                    Status = DebtStatus.Paid,
+                    PaidAmount = 80.00m,
+                    PaidDate = new DateTime(2024, 1, 15),
+                    Description = "Ocak ayı su borcu",
+                    TenantId = tenants[1].Id,
+                    OwnerId = owners[1].Id,
+                    CreatedAt = DateTime.UtcNow
+                });
+            }
             
-            context.UtilityDebts.AddRange(debt1, debt2, debt3);
-            await context.SaveChangesAsync();
+            // Üçüncü flat, tenant ve owner için borç (varsa)
+            if (flats.Count > 2 && tenants.Count > 2 && owners.Count > 2)
+            {
+                debts.Add(new UtilityDebt
+                {
+                    Id = Guid.NewGuid(),
+                    FlatId = flats[2].Id,
+                    Type = DebtType.Aidat,
+                    PeriodYear = 2024,
+                    PeriodMonth = 1,
+                    Amount = 500.00m,
+                    Status = DebtStatus.Partial,
+                    PaidAmount = 300.00m,
+                    PaidDate = new DateTime(2024, 1, 10),
+                    Description = "Ocak ayı aidat borcu",
+                    TenantId = tenants[2].Id,
+                    OwnerId = owners[2].Id,
+                    CreatedAt = DateTime.UtcNow
+                });
+            }
+            
+            if (debts.Any())
+            {
+                context.UtilityDebts.AddRange(debts);
+                await context.SaveChangesAsync();
+            }
         }
     }
 
@@ -641,38 +713,55 @@ using (var scope = app.Services.CreateScope())
         
         if (tenants.Any())
         {
-            var advance1 = new AdvanceAccount
-            {
-                Id = Guid.NewGuid(),
-                TenantId = tenants[0].Id,
-                Balance = 500.00m,
-                Description = "Kira depozitosu",
-                IsActive = true,
-                CreatedAt = DateTime.UtcNow
-            };
+            var advances = new List<AdvanceAccount>();
             
-            var advance2 = new AdvanceAccount
+            // İlk tenant için avans hesabı
+            if (tenants.Count > 0)
             {
-                Id = Guid.NewGuid(),
-                TenantId = tenants[1].Id,
-                Balance = 750.00m,
-                Description = "Fatura depozitosu",
-                IsActive = true,
-                CreatedAt = DateTime.UtcNow
-            };
+                advances.Add(new AdvanceAccount
+                {
+                    Id = Guid.NewGuid(),
+                    TenantId = tenants[0].Id,
+                    Balance = 500.00m,
+                    Description = "Kira depozitosu",
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow
+                });
+            }
             
-            var advance3 = new AdvanceAccount
+            // İkinci tenant için avans hesabı (varsa)
+            if (tenants.Count > 1)
             {
-                Id = Guid.NewGuid(),
-                TenantId = tenants[2].Id,
-                Balance = 1000.00m,
-                Description = "Güvenlik depozitosu",
-                IsActive = true,
-                CreatedAt = DateTime.UtcNow
-            };
+                advances.Add(new AdvanceAccount
+                {
+                    Id = Guid.NewGuid(),
+                    TenantId = tenants[1].Id,
+                    Balance = 750.00m,
+                    Description = "Fatura depozitosu",
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow
+                });
+            }
             
-            context.AdvanceAccounts.AddRange(advance1, advance2, advance3);
-            await context.SaveChangesAsync();
+            // Üçüncü tenant için avans hesabı (varsa)
+            if (tenants.Count > 2)
+            {
+                advances.Add(new AdvanceAccount
+                {
+                    Id = Guid.NewGuid(),
+                    TenantId = tenants[2].Id,
+                    Balance = 1000.00m,
+                    Description = "Güvenlik depozitosu",
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow
+                });
+            }
+            
+            if (advances.Any())
+            {
+                context.AdvanceAccounts.AddRange(advances);
+                await context.SaveChangesAsync();
+            }
         }
     }
 
@@ -683,50 +772,67 @@ using (var scope = app.Services.CreateScope())
         
         if (flats.Any())
         {
-            var reading1 = new MeterReading
-            {
-                Id = Guid.NewGuid(),
-                FlatId = flats[0].Id,
-                Type = MeterType.Electricity,
-                PeriodYear = 2024,
-                PeriodMonth = 1,
-                ReadingValue = 1250.50m,
-                Consumption = 150.30m,
-                ReadingDate = new DateTime(2024, 1, 31),
-                Note = "Ocak ayı elektrik sayacı okuması",
-                CreatedAt = DateTime.UtcNow
-            };
+            var readings = new List<MeterReading>();
             
-            var reading2 = new MeterReading
+            // İlk flat için sayaç okuması
+            if (flats.Count > 0)
             {
-                Id = Guid.NewGuid(),
-                FlatId = flats[1].Id,
-                Type = MeterType.Water,
-                PeriodYear = 2024,
-                PeriodMonth = 1,
-                ReadingValue = 85.20m,
-                Consumption = 12.50m,
-                ReadingDate = new DateTime(2024, 1, 31),
-                Note = "Ocak ayı su sayacı okuması",
-                CreatedAt = DateTime.UtcNow
-            };
+                readings.Add(new MeterReading
+                {
+                    Id = Guid.NewGuid(),
+                    FlatId = flats[0].Id,
+                    Type = MeterType.Electricity,
+                    PeriodYear = 2024,
+                    PeriodMonth = 1,
+                    ReadingValue = 1250.50m,
+                    Consumption = 150.30m,
+                    ReadingDate = new DateTime(2024, 1, 31),
+                    Note = "Ocak ayı elektrik sayacı okuması",
+                    CreatedAt = DateTime.UtcNow
+                });
+            }
             
-            var reading3 = new MeterReading
+            // İkinci flat için sayaç okuması (varsa)
+            if (flats.Count > 1)
             {
-                Id = Guid.NewGuid(),
-                FlatId = flats[2].Id,
-                Type = MeterType.Electricity,
-                PeriodYear = 2024,
-                PeriodMonth = 1,
-                ReadingValue = 2100.75m,
-                Consumption = 200.45m,
-                ReadingDate = new DateTime(2024, 1, 31),
-                Note = "Ocak ayı elektrik sayacı okuması",
-                CreatedAt = DateTime.UtcNow
-            };
+                readings.Add(new MeterReading
+                {
+                    Id = Guid.NewGuid(),
+                    FlatId = flats[1].Id,
+                    Type = MeterType.Water,
+                    PeriodYear = 2024,
+                    PeriodMonth = 1,
+                    ReadingValue = 85.20m,
+                    Consumption = 12.50m,
+                    ReadingDate = new DateTime(2024, 1, 31),
+                    Note = "Ocak ayı su sayacı okuması",
+                    CreatedAt = DateTime.UtcNow
+                });
+            }
             
-            context.MeterReadings.AddRange(reading1, reading2, reading3);
-            await context.SaveChangesAsync();
+            // Üçüncü flat için sayaç okuması (varsa)
+            if (flats.Count > 2)
+            {
+                readings.Add(new MeterReading
+                {
+                    Id = Guid.NewGuid(),
+                    FlatId = flats[2].Id,
+                    Type = MeterType.Electricity,
+                    PeriodYear = 2024,
+                    PeriodMonth = 1,
+                    ReadingValue = 2100.75m,
+                    Consumption = 200.45m,
+                    ReadingDate = new DateTime(2024, 1, 31),
+                    Note = "Ocak ayı elektrik sayacı okuması",
+                    CreatedAt = DateTime.UtcNow
+                });
+            }
+            
+            if (readings.Any())
+            {
+                context.MeterReadings.AddRange(readings);
+                await context.SaveChangesAsync();
+            }
         }
     }
 
@@ -760,6 +866,14 @@ using (var scope = app.Services.CreateScope())
         context.UtilityBills.AddRange(bill1, bill2);
         await context.SaveChangesAsync();
     }
+    
+    logger.LogInformation("✅ Seed data başarıyla tamamlandı!");
+}
+catch (Exception ex)
+{
+    logger.LogError(ex, "❌ Seed data oluşturulurken hata oluştu: {Message}", ex.Message);
+    // Seed data hatası API'yi durdurmamalı, sadece log'lanmalı
+}
 }
 
 // Configure the HTTP request pipeline.
@@ -787,11 +901,11 @@ app.Use(async (context, next) =>
         var origin = context.Request.Headers["Origin"].FirstOrDefault();
         if (!string.IsNullOrEmpty(origin) && (origin.Contains("akyildizyonetim.com") || origin.Contains("localhost")))
         {
-            context.Response.Headers.Add("Access-Control-Allow-Origin", origin);
+            context.Response.Headers["Access-Control-Allow-Origin"] = origin;
         }
-        context.Response.Headers.Add("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-        context.Response.Headers.Add("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With");
-        context.Response.Headers.Add("Access-Control-Allow-Credentials", "true");
+        context.Response.Headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS";
+        context.Response.Headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With";
+        context.Response.Headers["Access-Control-Allow-Credentials"] = "true";
         context.Response.StatusCode = 200;
         await context.Response.CompleteAsync();
         return;
@@ -805,9 +919,9 @@ app.Use(async (context, next) =>
     var responseOrigin = context.Request.Headers["Origin"].FirstOrDefault();
     if (!string.IsNullOrEmpty(responseOrigin) && (responseOrigin.Contains("akyildizyonetim.com") || responseOrigin.Contains("localhost")))
     {
-        context.Response.Headers.Add("Access-Control-Allow-Origin", responseOrigin);
+        context.Response.Headers["Access-Control-Allow-Origin"] = responseOrigin;
     }
-    context.Response.Headers.Add("Access-Control-Allow-Credentials", "true");
+    context.Response.Headers["Access-Control-Allow-Credentials"] = "true";
     
     await next();
 });
