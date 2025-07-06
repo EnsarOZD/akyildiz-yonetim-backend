@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace AkyildizYonetim.Infrastructure.Migrations
 {
     /// <inheritdoc />
-    public partial class AddFloorEntity : Migration
+    public partial class UpdateTenantModel : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -239,8 +239,7 @@ namespace AkyildizYonetim.Infrastructure.Migrations
             migrationBuilder.CreateIndex(
                 name: "IX_Flats_UnitNumber",
                 table: "Flats",
-                column: "UnitNumber",
-                unique: true);
+                column: "UnitNumber");
 
             migrationBuilder.AddForeignKey(
                 name: "FK_Payments_Tenants_TenantId",

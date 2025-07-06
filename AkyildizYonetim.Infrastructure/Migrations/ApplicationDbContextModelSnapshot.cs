@@ -341,8 +341,7 @@ namespace AkyildizYonetim.Infrastructure.Migrations
 
                     b.HasIndex("TenantId");
 
-                    b.HasIndex("UnitNumber")
-                        .IsUnique();
+                    b.HasIndex("UnitNumber");
 
                     b.ToTable("Flats");
                 });

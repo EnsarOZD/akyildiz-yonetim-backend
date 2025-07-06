@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace AkyildizYonetim.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20250706142519_AddFloorEntity")]
-    partial class AddFloorEntity
+    [Migration("20250706144413_UpdateTenantModel")]
+    partial class UpdateTenantModel
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -344,8 +344,7 @@ namespace AkyildizYonetim.Infrastructure.Migrations
 
                     b.HasIndex("TenantId");
 
-                    b.HasIndex("UnitNumber")
-                        .IsUnique();
+                    b.HasIndex("UnitNumber");
 
                     b.ToTable("Flats");
                 });

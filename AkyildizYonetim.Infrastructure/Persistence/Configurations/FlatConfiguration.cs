@@ -67,7 +67,7 @@ public class FlatConfiguration : IEntityTypeConfiguration<Flat>
         
         // Indexes
         builder.HasIndex(f => f.Number);
-        builder.HasIndex(f => f.UnitNumber).IsUnique();
+        builder.HasIndex(f => f.UnitNumber);
         builder.HasIndex(f => f.Floor);
         builder.HasIndex(f => f.OwnerId);
         builder.HasIndex(f => f.TenantId);
