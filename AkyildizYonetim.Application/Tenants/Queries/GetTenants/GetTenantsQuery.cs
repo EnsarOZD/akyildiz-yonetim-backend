@@ -9,6 +9,7 @@ public record GetTenantsQuery : IRequest<Result<List<TenantDto>>>
 {
     public bool? IsActive { get; init; }
     public string? SearchTerm { get; init; }
+    public DateTime? Period { get; init; }
 }
 
 public class GetTenantsQueryHandler : IRequestHandler<GetTenantsQuery, Result<List<TenantDto>>>
@@ -26,6 +27,15 @@ public class GetTenantsQueryHandler : IRequestHandler<GetTenantsQuery, Result<Li
 
         if (request.IsActive.HasValue)
             query = query.Where(t => t.IsActive == request.IsActive.Value);
+
+        if (request.Period.HasValue)
+        {
+            var period = request.Period.Value;
+            query = query.Where(t =>
+                t.LeaseStartDate <= period &&
+                (t.LeaseEndDate == null || t.LeaseEndDate >= period)
+            );
+        }
 
         if (!string.IsNullOrWhiteSpace(request.SearchTerm))
         {

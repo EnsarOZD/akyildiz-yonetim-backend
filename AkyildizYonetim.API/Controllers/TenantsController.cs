@@ -17,9 +17,9 @@ public class TenantsController : ControllerBase
     public TenantsController(IMediator mediator) { _mediator = mediator; }
 
     [HttpGet]
-    public async Task<IActionResult> GetTenants([FromQuery] bool? isActive, [FromQuery] string? searchTerm)
+    public async Task<IActionResult> GetTenants([FromQuery] bool? isActive, [FromQuery] string? searchTerm, [FromQuery] DateTime? period)
     {
-        var result = await _mediator.Send(new GetTenantsQuery { IsActive = isActive, SearchTerm = searchTerm });
+        var result = await _mediator.Send(new GetTenantsQuery { IsActive = isActive, SearchTerm = searchTerm, Period = period });
         return result.IsSuccess ? Ok(result.Data) : BadRequest(result.ErrorMessage ?? string.Join(", ", result.Errors));
     }
 

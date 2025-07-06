@@ -9,6 +9,8 @@ public class Flat : BaseEntity
     public string ApartmentNumber { get; set; } = string.Empty;
     public int RoomCount { get; set; }
     public bool IsActive { get; set; } = true;
+    public string Category { get; set; } = "Normal"; // Normal, OrtakAlan, Mescit, Otopark gibi
+    public int ShareCount { get; set; } = 1; // Ortak paylaşımda hisse sayısı (ör: -3/-4 için 2, diğerleri için 1)
     
 
     // Navigation properties

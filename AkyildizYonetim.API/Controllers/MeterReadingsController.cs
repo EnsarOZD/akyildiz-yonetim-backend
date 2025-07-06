@@ -1,3 +1,4 @@
+using AkyildizYonetim.Application.MeterReadings.Commands;
 using AkyildizYonetim.Application.MeterReadings.Commands.CreateMeterReading;
 using AkyildizYonetim.Application.MeterReadings.Commands.UpdateMeterReading;
 using AkyildizYonetim.Application.MeterReadings.Commands.DeleteMeterReading;
@@ -119,5 +120,12 @@ public class MeterReadingsController : ControllerBase
         };
 
         return Ok(stats);
+    }
+
+    [HttpPost("distribute-shared-consumption")]
+    public async Task<IActionResult> DistributeSharedConsumption([FromBody] DistributeSharedConsumptionCommand command)
+    {
+        var result = await _mediator.Send(command);
+        return Ok(result);
     }
 } 
