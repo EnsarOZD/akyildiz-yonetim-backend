@@ -6,7 +6,7 @@ namespace AkyildizYonetim.API.Controllers;
 [Route("[controller]")]
 public class HealthController : ControllerBase
 {
-    [HttpGet]
+    [HttpGet, HttpHead]
     public IActionResult Get()
     {
         return Ok(new
