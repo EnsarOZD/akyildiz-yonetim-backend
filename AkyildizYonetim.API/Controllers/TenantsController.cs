@@ -80,6 +80,8 @@ public class TenantsController : ControllerBase
             // Log incoming request for debugging
             var logger = HttpContext.RequestServices.GetService<ILogger<TenantsController>>();
             logger?.LogInformation("CreateTenant called with request: {@Request}", request);
+            logger?.LogInformation("FlatId: {FlatId}, FlatIdInt: {FlatIdInt}", request.FlatId, request.FlatIdInt);
+            logger?.LogInformation("RentStartDate: {RentStartDate}, RentEndDate: {RentEndDate}", request.RentStartDate, request.RentEndDate);
             
             // Validate request
             if (request == null)
@@ -97,11 +99,48 @@ public class TenantsController : ControllerBase
             if (string.IsNullOrEmpty(request.IdentityNumber))
                 return BadRequest(new { error = "Identity number is required" });
                 
-            if (!request.FlatId.HasValue || request.FlatId.Value == Guid.Empty)
+            // Flat ID validation and conversion
+            Guid? flatId = null;
+            if (request.FlatId.HasValue && request.FlatId.Value != Guid.Empty)
+            {
+                flatId = request.FlatId.Value;
+            }
+            else if (request.FlatIdInt.HasValue)
+            {
+                // Try to find flat by number or other identifier
+                // This is a placeholder - you might need to adjust based on your flat numbering system
+                logger?.LogWarning("FlatIdInt provided: {FlatIdInt}, but conversion to Guid not implemented", request.FlatIdInt.Value);
+                return BadRequest(new { error = "Flat ID conversion not supported. Please provide FlatId as Guid." });
+            }
+            
+            if (!flatId.HasValue)
                 return BadRequest(new { error = "Flat ID is required" });
                 
             if (request.MonthlyRent <= 0)
                 return BadRequest(new { error = "Monthly rent must be greater than 0" });
+            
+            // Date parsing
+            DateTime? contractStartDate = null;
+            if (request.RentStartDateDt.HasValue)
+            {
+                contractStartDate = request.RentStartDateDt.Value;
+            }
+            else if (!string.IsNullOrEmpty(request.RentStartDate))
+            {
+                if (DateTime.TryParse(request.RentStartDate, out var startDate))
+                    contractStartDate = startDate;
+            }
+            
+            DateTime? contractEndDate = null;
+            if (request.RentEndDateDt.HasValue)
+            {
+                contractEndDate = request.RentEndDateDt.Value;
+            }
+            else if (!string.IsNullOrEmpty(request.RentEndDate))
+            {
+                if (DateTime.TryParse(request.RentEndDate, out var endDate))
+                    contractEndDate = endDate;
+            }
             
             var command = new CreateTenantCommand
             {
@@ -111,12 +150,12 @@ public class TenantsController : ControllerBase
                 ContactPersonName = !string.IsNullOrEmpty(request.ContactPersonName) ? request.ContactPersonName : request.Name,
                 ContactPersonPhone = !string.IsNullOrEmpty(request.ContactPersonPhone) ? request.ContactPersonPhone : request.Phone,
                 ContactPersonEmail = !string.IsNullOrEmpty(request.ContactPersonEmail) ? request.ContactPersonEmail : request.Email,
-                FlatId = request.FlatId.Value,
+                FlatId = flatId.Value,
                 MonthlyAidat = request.MonthlyRent,
                 ElectricityRate = 1.50m, // Default value
                 WaterRate = 8.00m, // Default value
-                ContractStartDate = !string.IsNullOrEmpty(request.RentStartDate) ? DateTime.Parse(request.RentStartDate) : null,
-                ContractEndDate = !string.IsNullOrEmpty(request.RentEndDate) ? DateTime.Parse(request.RentEndDate) : null
+                ContractStartDate = contractStartDate,
+                ContractEndDate = contractEndDate
             };
             
             var result = await _mediator.Send(command);
@@ -158,8 +197,10 @@ public class TenantsController : ControllerBase
                 MonthlyAidat = request.MonthlyRent,
                 ElectricityRate = 1.50m, // Default value
                 WaterRate = 8.00m, // Default value
-                ContractStartDate = !string.IsNullOrEmpty(request.RentStartDate) ? DateTime.Parse(request.RentStartDate) : null,
-                ContractEndDate = !string.IsNullOrEmpty(request.RentEndDate) ? DateTime.Parse(request.RentEndDate) : null,
+                ContractStartDate = !string.IsNullOrEmpty(request.RentStartDate) ? 
+                    (DateTime.TryParse(request.RentStartDate, out var startDate) ? startDate : null) : null,
+                ContractEndDate = !string.IsNullOrEmpty(request.RentEndDate) ? 
+                    (DateTime.TryParse(request.RentEndDate, out var endDate) ? endDate : null) : null,
                 IsActive = true
             };
             
@@ -201,7 +242,7 @@ public class TenantsController : ControllerBase
     }
     
     /// <summary>
-    /// Test endpoint - gelen veriyi loglar
+    /// Test endpoint - gelen veriyi detaylı loglar
     /// </summary>
     [HttpPost("test")]
     public IActionResult TestRequest([FromBody] object request)
@@ -209,16 +250,33 @@ public class TenantsController : ControllerBase
         var logger = HttpContext.RequestServices.GetService<ILogger<TenantsController>>();
         logger?.LogInformation("Test request received: {@Request}", request);
         
+        // Try to parse as CreateTenantRequest to see what fields are present
+        try
+        {
+            var jsonString = System.Text.Json.JsonSerializer.Serialize(request);
+            logger?.LogInformation("Request as JSON: {JsonString}", jsonString);
+            
+            // Try to deserialize to see what we get
+            var tenantRequest = System.Text.Json.JsonSerializer.Deserialize<CreateTenantRequest>(jsonString);
+            logger?.LogInformation("Parsed as CreateTenantRequest: {@TenantRequest}", tenantRequest);
+        }
+        catch (Exception ex)
+        {
+            logger?.LogWarning("Could not parse request as CreateTenantRequest: {Error}", ex.Message);
+        }
+        
         return Ok(new { 
-            message = "Test request received", 
+            message = "Test request received and logged", 
             receivedData = request,
-            timestamp = DateTime.UtcNow
+            timestamp = DateTime.UtcNow,
+            note = "Check logs for detailed information"
         });
     }
 }
 
 public class CreateTenantRequest
 {
+    // Basic fields (required)
     [Required(ErrorMessage = "Name is required")]
     [StringLength(100, ErrorMessage = "Name cannot be longer than 100 characters")]
     public string Name { get; set; } = string.Empty;
@@ -238,12 +296,17 @@ public class CreateTenantRequest
     [StringLength(20, ErrorMessage = "Identity number cannot be longer than 20 characters")]
     public string IdentityNumber { get; set; } = string.Empty;
     
-    [Required(ErrorMessage = "Flat ID is required")]
+    // Flat ID - can be Guid or int from frontend
     public Guid? FlatId { get; set; }
+    public int? FlatIdInt { get; set; } // Alternative for int format
     
+    // Date fields - can be string or DateTime
     public string? RentStartDate { get; set; }
     public string? RentEndDate { get; set; }
+    public DateTime? RentStartDateDt { get; set; }
+    public DateTime? RentEndDateDt { get; set; }
     
+    // Financial fields
     [Range(0.01, double.MaxValue, ErrorMessage = "Monthly rent must be greater than 0")]
     public decimal MonthlyRent { get; set; }
     
