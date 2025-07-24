@@ -3,6 +3,7 @@ using AkyildizYonetim.Application.Common.Models;
 using AkyildizYonetim.Domain.Entities;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using AkyildizYonetim.Application.DTOs;
 
 namespace AkyildizYonetim.Application.Payments.Queries.GetPayments;
 
@@ -69,19 +70,4 @@ public class GetPaymentsQueryHandler : IRequestHandler<GetPaymentsQuery, Result<
 
         return Result<List<PaymentDto>>.Success(payments);
     }
-}
-
-public class PaymentDto
-{
-    public Guid Id { get; set; }
-    public decimal Amount { get; set; }
-    public PaymentType Type { get; set; }
-    public PaymentStatus Status { get; set; }
-    public DateTime PaymentDate { get; set; }
-    public string? Description { get; set; }
-    public string? ReceiptNumber { get; set; }
-    public Guid? OwnerId { get; set; }
-    public Guid? TenantId { get; set; }
-    public DateTime CreatedAt { get; set; }
-    public DateTime? UpdatedAt { get; set; }
 } 

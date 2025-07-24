@@ -1,5 +1,6 @@
 using AkyildizYonetim.Application.Common.Interfaces;
 using AkyildizYonetim.Application.Common.Models;
+using AkyildizYonetim.Application.DTOs;
 using AkyildizYonetim.Domain.Entities;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -12,12 +13,6 @@ public record UseAdvanceAccountCommand : IRequest<Result<AdvanceAccountUsageDto>
     public Guid TenantId { get; init; }
     public List<DebtPaymentRequest> DebtPayments { get; init; } = new();
     public string? Description { get; init; }
-}
-
-public record DebtPaymentRequest
-{
-    public Guid DebtId { get; init; }
-    public decimal Amount { get; init; }
 }
 
 public class UseAdvanceAccountCommandHandler 
@@ -165,23 +160,4 @@ public class UseAdvanceAccountCommandHandler
     }
 }
 
-public class AdvanceAccountUsageDto
-{
-    public Guid PaymentId { get; set; }
-    public Guid TenantId { get; set; }
-    public decimal TotalAmount { get; set; }
-    public decimal PreviousBalance { get; set; }
-    public decimal NewBalance { get; set; }
-    public List<DebtPaymentResult> DebtPayments { get; set; } = new();
-    public string? Description { get; set; }
-    public DateTime PaymentDate { get; set; }
-}
-
-public class DebtPaymentResult
-{
-    public Guid DebtId { get; set; }
-    public string DebtDescription { get; set; } = string.Empty;
-    public decimal PaidAmount { get; set; }
-    public decimal RemainingDebtAmount { get; set; }
-    public DebtStatus DebtStatus { get; set; }
-} 
+ 

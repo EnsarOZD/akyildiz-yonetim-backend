@@ -3,12 +3,14 @@ using AkyildizYonetim.Application.Payments.Commands.DeletePayment;
 using AkyildizYonetim.Application.Payments.Commands.UpdatePayment;
 using AkyildizYonetim.Application.Payments.Queries.GetPaymentById;
 using AkyildizYonetim.Application.Payments.Queries.GetPayments;
-using AkyildizYonetim.Domain.Entities;
+using AkyildizYonetim.Application.DTOs;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using System;
 using System.ComponentModel.DataAnnotations;
+using AkyildizYonetim.Domain.Entities;
+
 
 namespace AkyildizYonetim.API.Controllers;
 

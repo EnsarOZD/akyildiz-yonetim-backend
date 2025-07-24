@@ -2,6 +2,7 @@ using AkyildizYonetim.Application.Common.Interfaces;
 using AkyildizYonetim.Application.Common.Models;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using AkyildizYonetim.Application.DTOs;
 
 namespace AkyildizYonetim.Application.Tenants.Queries.GetTenants;
 
@@ -165,41 +166,4 @@ public class GetAvailableFlatsQueryHandler : IRequestHandler<GetAvailableFlatsQu
     }
 }
 
-public class TenantDto
-{
-    public Guid Id { get; set; }
-    
-    // İş Yeri Bilgileri
-    public string CompanyName { get; set; } = string.Empty;
-    public string BusinessType { get; set; } = string.Empty;
-    public string TaxNumber { get; set; } = string.Empty;
-    
-    // İletişim Kişisi Bilgileri
-    public string ContactPersonName { get; set; } = string.Empty;
-    public string ContactPersonPhone { get; set; } = string.Empty;
-    public string ContactPersonEmail { get; set; } = string.Empty;
-    
-    // Aidat ve Borç Yönetimi
-    public decimal MonthlyAidat { get; set; }
-    public decimal ElectricityRate { get; set; }
-    public decimal WaterRate { get; set; }
-    
-    // Sözleşme Bilgileri
-    public DateTime? ContractStartDate { get; set; }
-    public DateTime? ContractEndDate { get; set; }
-    
-    public bool IsActive { get; set; }
-    public DateTime CreatedAt { get; set; }
-    public DateTime? UpdatedAt { get; set; }
-    public List<FlatInfoDto> Flats { get; set; } = new List<FlatInfoDto>();
-}
-
-public class FlatInfoDto
-{
-    public Guid Id { get; set; }
-    public string UnitNumber { get; set; } = string.Empty;
-    public int Floor { get; set; }
-    public decimal UnitArea { get; set; }
-    public string Category { get; set; } = string.Empty;
-    public bool IsOccupied { get; set; }
-} 
+// TenantDto ve FlatInfoDto tanımlarını kaldırıyorum, sadece referans bırakıyorum. 

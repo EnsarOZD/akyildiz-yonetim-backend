@@ -1,4 +1,4 @@
-namespace AkyildizYonetim.Application.AdvanceAccounts.DTOs;
+namespace AkyildizYonetim.Application.DTOs;
 
 public class AdvanceAccountDto
 {

@@ -1,6 +1,6 @@
 using AkyildizYonetim.Application.Common.Interfaces;
 using AkyildizYonetim.Application.Common.Models;
-using AkyildizYonetim.Application.AdvanceAccounts.DTOs;
+using AkyildizYonetim.Application.DTOs;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 

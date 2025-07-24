@@ -5,6 +5,7 @@ using AkyildizYonetim.Application.Payments.Queries.GetPaymentById;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using AkyildizYonetim.Application.DTOs;
 
 namespace AkyildizYonetim.Application.Payments.Commands.CreatePayment;
 

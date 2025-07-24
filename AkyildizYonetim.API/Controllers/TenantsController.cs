@@ -83,22 +83,6 @@ public class TenantsController : ControllerBase
             logger?.LogInformation("FlatId: {FlatId}, FlatIdInt: {FlatIdInt}", request.FlatId, request.FlatIdInt);
             logger?.LogInformation("RentStartDate: {RentStartDate}, RentEndDate: {RentEndDate}", request.RentStartDate, request.RentEndDate);
             
-            // Validate request
-            if (request == null)
-                return BadRequest(new { error = "Request body is required" });
-                
-            if (string.IsNullOrEmpty(request.Name))
-                return BadRequest(new { error = "Name is required" });
-                
-            if (string.IsNullOrEmpty(request.Email))
-                return BadRequest(new { error = "Email is required" });
-                
-            if (string.IsNullOrEmpty(request.Phone))
-                return BadRequest(new { error = "Phone is required" });
-                
-            if (string.IsNullOrEmpty(request.IdentityNumber))
-                return BadRequest(new { error = "Identity number is required" });
-                
             // Flat ID validation and conversion
             Guid? flatId = null;
             if (request.FlatId.HasValue && request.FlatId.Value != Guid.Empty)
@@ -115,9 +99,6 @@ public class TenantsController : ControllerBase
             
             if (!flatId.HasValue)
                 return BadRequest(new { error = "Flat ID is required" });
-                
-            if (request.MonthlyRent <= 0)
-                return BadRequest(new { error = "Monthly rent must be greater than 0" });
             
             // Date parsing
             DateTime? contractStartDate = null;
