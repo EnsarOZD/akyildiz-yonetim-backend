@@ -132,8 +132,13 @@ public class TenantsController : ControllerBase
             if (!flatId.HasValue)
                 return BadRequest(new { error = "Flat ID is required" });
                 
-            if (request.MonthlyRent <= 0)
-                return BadRequest(new { error = "Monthly rent must be greater than 0" });
+            // MonthlyRent validation - allow 0 but provide default if needed
+            var monthlyRent = request.MonthlyRent;
+            if (monthlyRent <= 0)
+            {
+                logger?.LogWarning("MonthlyRent is {MonthlyRent}, using default value of 1000", monthlyRent);
+                monthlyRent = 1000; // Default value
+            }
             
             // Date parsing
             DateTime? contractStartDate = null;
@@ -167,7 +172,7 @@ public class TenantsController : ControllerBase
                 ContactPersonPhone = contactPersonPhone,
                 ContactPersonEmail = contactPersonEmail,
                 FlatId = flatId.Value,
-                MonthlyAidat = request.MonthlyRent,
+                MonthlyAidat = monthlyRent,
                 ContractStartDate = contractStartDate,
                 ContractEndDate = contractEndDate
             };
@@ -315,7 +320,7 @@ public class CreateTenantRequest
     public DateTime? RentEndDateDt { get; set; }
     
     // Financial fields
-    [Range(0.01, double.MaxValue, ErrorMessage = "Monthly rent must be greater than 0")]
+    [Range(0, double.MaxValue, ErrorMessage = "Monthly rent cannot be negative")]
     public decimal MonthlyRent { get; set; }
     
     [Range(0, double.MaxValue, ErrorMessage = "Deposit cannot be negative")]
