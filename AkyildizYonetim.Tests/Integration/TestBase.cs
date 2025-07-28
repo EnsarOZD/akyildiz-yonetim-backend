@@ -65,8 +65,7 @@ public class TestBase
             ContactPersonPhone = "5551234567",
             ContactPersonEmail = "test@example.com",
             MonthlyAidat = 150,
-            ElectricityRate = 0.8m,
-            WaterRate = 0.5m,
+
             ContractStartDate = DateTime.UtcNow.AddDays(-30),
             ContractEndDate = DateTime.UtcNow.AddDays(335),
             IsActive = true,

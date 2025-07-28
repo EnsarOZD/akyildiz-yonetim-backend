@@ -27,8 +27,6 @@ public class GetTenantByIdQueryHandler : IRequestHandler<GetTenantByIdQuery, Res
                 ContactPersonPhone = t.ContactPersonPhone,
                 ContactPersonEmail = t.ContactPersonEmail,
                 MonthlyAidat = t.MonthlyAidat,
-                ElectricityRate = t.ElectricityRate,
-                WaterRate = t.WaterRate,
                 ContractStartDate = t.ContractStartDate,
                 ContractEndDate = t.ContractEndDate,
                 IsActive = t.IsActive,
@@ -70,8 +68,6 @@ public class TenantDto
     
     // Aidat ve Borç Yönetimi
     public decimal MonthlyAidat { get; set; }
-    public decimal ElectricityRate { get; set; }
-    public decimal WaterRate { get; set; }
     
     // Sözleşme Bilgileri
     public DateTime? ContractStartDate { get; set; }

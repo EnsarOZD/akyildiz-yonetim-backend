@@ -14,8 +14,6 @@ public class Tenant : BaseEntity
     
     // Aidat ve Borç Yönetimi
     public decimal MonthlyAidat { get; set; } // Aylık aidat
-    public decimal ElectricityRate { get; set; } // Elektrik tarifesi (kWh başına)
-    public decimal WaterRate { get; set; } // Su tarifesi (m³ başına)
     public bool IsActive { get; set; } = true;
     
     // Sözleşme Bilgileri (Opsiyonel)

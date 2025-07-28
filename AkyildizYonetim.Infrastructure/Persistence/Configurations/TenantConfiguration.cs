@@ -44,14 +44,6 @@ public class TenantConfiguration : IEntityTypeConfiguration<Tenant>
             .HasPrecision(18, 2)
             .IsRequired();
             
-        builder.Property(t => t.ElectricityRate)
-            .HasPrecision(10, 4)
-            .IsRequired();
-            
-        builder.Property(t => t.WaterRate)
-            .HasPrecision(10, 4)
-            .IsRequired();
-            
         builder.Property(t => t.IsActive)
             .IsRequired();
             

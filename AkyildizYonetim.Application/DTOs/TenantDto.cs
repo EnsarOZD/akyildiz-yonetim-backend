@@ -13,8 +13,6 @@ public class TenantDto
     public string ContactPersonPhone { get; set; } = string.Empty;
     public string ContactPersonEmail { get; set; } = string.Empty;
     public decimal MonthlyAidat { get; set; }
-    public decimal ElectricityRate { get; set; }
-    public decimal WaterRate { get; set; }
     public DateTime? ContractStartDate { get; set; }
     public DateTime? ContractEndDate { get; set; }
     public bool IsActive { get; set; }

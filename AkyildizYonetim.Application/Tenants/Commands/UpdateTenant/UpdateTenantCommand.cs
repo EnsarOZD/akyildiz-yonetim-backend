@@ -21,8 +21,6 @@ public record UpdateTenantCommand : IRequest<Result>
     
     // Aidat ve Borç Yönetimi
     public decimal MonthlyAidat { get; init; }
-    public decimal ElectricityRate { get; init; }
-    public decimal WaterRate { get; init; }
     
     // Sözleşme Bilgileri (Opsiyonel)
     public DateTime? ContractStartDate { get; init; }
@@ -53,8 +51,6 @@ public class UpdateTenantCommandHandler : IRequestHandler<UpdateTenantCommand, R
         tenant.ContactPersonPhone = request.ContactPersonPhone;
         tenant.ContactPersonEmail = request.ContactPersonEmail;
         tenant.MonthlyAidat = request.MonthlyAidat;
-        tenant.ElectricityRate = request.ElectricityRate;
-        tenant.WaterRate = request.WaterRate;
         tenant.ContractStartDate = request.ContractStartDate;
         tenant.ContractEndDate = request.ContractEndDate;
         tenant.IsActive = request.IsActive;

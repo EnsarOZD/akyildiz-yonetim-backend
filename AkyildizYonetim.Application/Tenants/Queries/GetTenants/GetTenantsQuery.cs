@@ -87,8 +87,6 @@ public class GetTenantsQueryHandler : IRequestHandler<GetTenantsQuery, Result<Li
                 ContactPersonPhone = t.ContactPersonPhone,
                 ContactPersonEmail = t.ContactPersonEmail,
                 MonthlyAidat = t.MonthlyAidat,
-                ElectricityRate = t.ElectricityRate,
-                WaterRate = t.WaterRate,
                 ContractStartDate = t.ContractStartDate,
                 ContractEndDate = t.ContractEndDate,
                 IsActive = t.IsActive,

@@ -23,8 +23,6 @@ public record CreateTenantCommand : IRequest<Result<Guid>>
     
     // Aidat ve Borç Yönetimi
     public decimal MonthlyAidat { get; init; }
-    public decimal ElectricityRate { get; init; }
-    public decimal WaterRate { get; init; }
     
     // Sözleşme Bilgileri (Opsiyonel)
     public DateTime? ContractStartDate { get; init; }
@@ -65,8 +63,6 @@ public class CreateTenantCommandHandler : IRequestHandler<CreateTenantCommand, R
             ContactPersonPhone = request.ContactPersonPhone,
             ContactPersonEmail = request.ContactPersonEmail,
             MonthlyAidat = request.MonthlyAidat,
-            ElectricityRate = request.ElectricityRate,
-            WaterRate = request.WaterRate,
             ContractStartDate = request.ContractStartDate,
             ContractEndDate = request.ContractEndDate,
             IsActive = true,

@@ -1,5 +1,6 @@
 using AkyildizYonetim.Application.Common.Interfaces;
 using AkyildizYonetim.Application.Common.Models;
+using AkyildizYonetim.Application.DTOs;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -33,26 +34,26 @@ public class GetFlatsQueryHandler : IRequestHandler<GetFlatsQuery, Result<List<F
             {
                 Id = f.Id,
                 Number = f.Number,
+                UnitNumber = f.UnitNumber,
                 Floor = f.Floor,
+                UnitArea = f.UnitArea,
+                RoomCount = f.RoomCount,
+                ApartmentNumber = f.ApartmentNumber,
                 OwnerId = f.OwnerId,
                 TenantId = f.TenantId,
+                IsActive = f.IsActive,
+                IsOccupied = f.IsOccupied,
+                Category = f.Category,
+                ShareCount = f.ShareCount,
+                BusinessType = f.BusinessType,
+                MonthlyRent = f.MonthlyRent,
+                Description = f.Description,
                 CreatedAt = f.CreatedAt,
-                UpdatedAt = f.UpdatedAt,
-                FlatNumber = f.Number
+                UpdatedAt = f.UpdatedAt
             })
             .ToListAsync(cancellationToken);
         return Result<List<FlatDto>>.Success(flats);
     }
 }
 
-public class FlatDto
-{
-    public Guid Id { get; set; }
-    public string Number { get; set; } = string.Empty;
-    public int Floor { get; set; }
-    public Guid OwnerId { get; set; }
-    public Guid? TenantId { get; set; }
-    public DateTime CreatedAt { get; set; }
-    public DateTime? UpdatedAt { get; set; }
-    public string FlatNumber { get; set; } = string.Empty;
-} 
+ 

@@ -82,7 +82,39 @@ public class TenantsController : ControllerBase
             logger?.LogInformation("CreateTenant called with request: {@Request}", request);
             logger?.LogInformation("FlatId: {FlatId}, FlatIdInt: {FlatIdInt}", request.FlatId, request.FlatIdInt);
             logger?.LogInformation("RentStartDate: {RentStartDate}, RentEndDate: {RentEndDate}", request.RentStartDate, request.RentEndDate);
+            logger?.LogInformation("Name: {Name}, Email: {Email}, Phone: {Phone}, IdentityNumber: {IdentityNumber}", 
+                request.Name, request.Email, request.Phone, request.IdentityNumber);
+            logger?.LogInformation("CompanyName: {CompanyName}, ContactPersonName: {ContactPersonName}, ContactPersonEmail: {ContactPersonEmail}, ContactPersonPhone: {ContactPersonPhone}", 
+                request.CompanyName, request.ContactPersonName, request.ContactPersonEmail, request.ContactPersonPhone);
             
+            // Validate request
+            if (request == null)
+                return BadRequest(new { error = "Request body is required" });
+                
+            // Determine the required fields based on what's provided
+            var companyName = !string.IsNullOrEmpty(request.CompanyName) ? request.CompanyName : request.Name;
+            var contactPersonName = !string.IsNullOrEmpty(request.ContactPersonName) ? request.ContactPersonName : request.Name;
+            var contactPersonEmail = !string.IsNullOrEmpty(request.ContactPersonEmail) ? request.ContactPersonEmail : request.Email;
+            var contactPersonPhone = !string.IsNullOrEmpty(request.ContactPersonPhone) ? request.ContactPersonPhone : request.Phone;
+            var taxNumber = !string.IsNullOrEmpty(request.IdentityNumber) ? request.IdentityNumber : "";
+            
+            // Validate required fields
+            if (string.IsNullOrEmpty(companyName))
+                return BadRequest(new { error = "Company name or name is required" });
+                
+            if (string.IsNullOrEmpty(contactPersonEmail))
+                return BadRequest(new { error = "Contact person email or email is required" });
+                
+            if (string.IsNullOrEmpty(contactPersonPhone))
+                return BadRequest(new { error = "Contact person phone or phone is required" });
+                
+            if (string.IsNullOrEmpty(taxNumber))
+                return BadRequest(new { error = "Identity number is required" });
+                
+            // Log the determined values
+            logger?.LogInformation("Determined values - CompanyName: {CompanyName}, ContactPersonName: {ContactPersonName}, ContactPersonEmail: {ContactPersonEmail}, ContactPersonPhone: {ContactPersonPhone}, TaxNumber: {TaxNumber}", 
+                companyName, contactPersonName, contactPersonEmail, contactPersonPhone, taxNumber);
+                
             // Flat ID validation and conversion
             Guid? flatId = null;
             if (request.FlatId.HasValue && request.FlatId.Value != Guid.Empty)
@@ -99,6 +131,9 @@ public class TenantsController : ControllerBase
             
             if (!flatId.HasValue)
                 return BadRequest(new { error = "Flat ID is required" });
+                
+            if (request.MonthlyRent <= 0)
+                return BadRequest(new { error = "Monthly rent must be greater than 0" });
             
             // Date parsing
             DateTime? contractStartDate = null;
@@ -125,16 +160,14 @@ public class TenantsController : ControllerBase
             
             var command = new CreateTenantCommand
             {
-                CompanyName = !string.IsNullOrEmpty(request.CompanyName) ? request.CompanyName : request.Name,
+                CompanyName = companyName,
                 BusinessType = !string.IsNullOrEmpty(request.BusinessType) ? request.BusinessType : "Ticaret",
-                TaxNumber = request.IdentityNumber,
-                ContactPersonName = !string.IsNullOrEmpty(request.ContactPersonName) ? request.ContactPersonName : request.Name,
-                ContactPersonPhone = !string.IsNullOrEmpty(request.ContactPersonPhone) ? request.ContactPersonPhone : request.Phone,
-                ContactPersonEmail = !string.IsNullOrEmpty(request.ContactPersonEmail) ? request.ContactPersonEmail : request.Email,
+                TaxNumber = taxNumber,
+                ContactPersonName = contactPersonName,
+                ContactPersonPhone = contactPersonPhone,
+                ContactPersonEmail = contactPersonEmail,
                 FlatId = flatId.Value,
                 MonthlyAidat = request.MonthlyRent,
-                ElectricityRate = 1.50m, // Default value
-                WaterRate = 8.00m, // Default value
                 ContractStartDate = contractStartDate,
                 ContractEndDate = contractEndDate
             };
@@ -176,8 +209,6 @@ public class TenantsController : ControllerBase
                 ContactPersonPhone = request.Phone,
                 ContactPersonEmail = request.Email,
                 MonthlyAidat = request.MonthlyRent,
-                ElectricityRate = 1.50m, // Default value
-                WaterRate = 8.00m, // Default value
                 ContractStartDate = !string.IsNullOrEmpty(request.RentStartDate) ? 
                     (DateTime.TryParse(request.RentStartDate, out var startDate) ? startDate : null) : null,
                 ContractEndDate = !string.IsNullOrEmpty(request.RentEndDate) ? 
@@ -257,25 +288,21 @@ public class TenantsController : ControllerBase
 
 public class CreateTenantRequest
 {
-    // Basic fields (required)
-    [Required(ErrorMessage = "Name is required")]
+    // Basic fields - made optional to handle different frontend formats
     [StringLength(100, ErrorMessage = "Name cannot be longer than 100 characters")]
-    public string Name { get; set; } = string.Empty;
+    public string? Name { get; set; }
     
-    [Required(ErrorMessage = "Email is required")]
     [EmailAddress(ErrorMessage = "Invalid email format")]
-    public string Email { get; set; } = string.Empty;
+    public string? Email { get; set; }
     
-    [Required(ErrorMessage = "Phone is required")]
     [StringLength(20, ErrorMessage = "Phone cannot be longer than 20 characters")]
-    public string Phone { get; set; } = string.Empty;
+    public string? Phone { get; set; }
     
     [StringLength(200, ErrorMessage = "Address cannot be longer than 200 characters")]
-    public string Address { get; set; } = string.Empty;
+    public string? Address { get; set; }
     
-    [Required(ErrorMessage = "Identity number is required")]
     [StringLength(20, ErrorMessage = "Identity number cannot be longer than 20 characters")]
-    public string IdentityNumber { get; set; } = string.Empty;
+    public string? IdentityNumber { get; set; }
     
     // Flat ID - can be Guid or int from frontend
     public Guid? FlatId { get; set; }
