@@ -18,6 +18,7 @@ public interface IApplicationDbContext
     DbSet<UtilityBill> UtilityBills { get; }
     DbSet<PaymentDebt> PaymentDebts { get; }
     DbSet<AuditLog> AuditLogs { get; }
+    DbSet<UtilityPricingConfiguration> UtilityPricingConfigurations { get; }
     
     Microsoft.EntityFrameworkCore.Infrastructure.DatabaseFacade Database { get; }
     Task<int> SaveChangesAsync(CancellationToken cancellationToken);

@@ -32,6 +32,7 @@ public class GetMeterReadingsQueryHandler : IRequestHandler<GetMeterReadingsQuer
         {
             var query = _context.MeterReadings
                 .Include(mr => mr.Flat)
+                .Where(mr => !mr.IsDeleted) 
                 .AsQueryable();
 
             // Filtreler

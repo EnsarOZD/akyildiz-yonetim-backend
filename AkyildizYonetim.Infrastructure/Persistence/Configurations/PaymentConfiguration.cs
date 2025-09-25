@@ -24,10 +24,10 @@ public class PaymentConfiguration : IEntityTypeConfiguration<Payment>
             .IsRequired();
             
         builder.Property(p => p.Description)
-            .HasMaxLength(500);
+       .HasMaxLength(500)
+       .IsUnicode(false);
             
-        builder.Property(p => p.ReceiptNumber)
-            .HasMaxLength(100);
+        builder.Property(p => p.ReceiptNumber).HasMaxLength(100).IsUnicode(false);
             
         builder.Property(p => p.IsDeleted)
             .IsRequired()
@@ -37,6 +37,10 @@ public class PaymentConfiguration : IEntityTypeConfiguration<Payment>
             .IsRequired();
             
         builder.Property(p => p.UpdatedAt);
+
+        
+
+        builder.HasCheckConstraint("CK_Payments_Amount_Positive", "[Amount] >= 0");
         
         // Indexes
         builder.HasIndex(p => p.PaymentDate);
@@ -44,5 +48,21 @@ public class PaymentConfiguration : IEntityTypeConfiguration<Payment>
         builder.HasIndex(p => p.Status);
         builder.HasIndex(p => p.OwnerId);
         builder.HasIndex(p => p.TenantId);
+        builder.HasIndex(p => new { p.TenantId, p.PaymentDate });
+        builder.HasIndex(p => new { p.OwnerId,  p.PaymentDate });
+        builder.HasIndex(p => p.ReceiptNumber)
+       .IsUnique()
+       .HasFilter("[IsDeleted] = 0 AND [ReceiptNumber] IS NOT NULL");
+
+        // Relationships
+        builder.HasOne(p => p.Owner)
+            .WithMany(o => o.Payments)
+            .HasForeignKey(p => p.OwnerId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        builder.HasOne(p => p.Tenant)
+       .WithMany(t => t.Payments)
+       .HasForeignKey(p => p.TenantId)
+       .OnDelete(DeleteBehavior.SetNull); 
     }
 } 

@@ -59,8 +59,8 @@ public class TestBase
         {
             Id = Guid.NewGuid(),
             CompanyName = "Test Company",
+            CompanyType="Şahıs",
             BusinessType = "Ticaret",
-            TaxNumber = "1234567890",
             ContactPersonName = "Test Contact",
             ContactPersonPhone = "5551234567",
             ContactPersonEmail = "test@example.com",
@@ -89,11 +89,10 @@ public class TestBase
         {
             Id = Guid.NewGuid(),
             Number = "A1",
-            Floor = 1,
+            FloorNumber = 1,
             OwnerId = owner.Id,
             TenantId = tenant.Id,
             ApartmentNumber = "A1",
-            RoomCount = 3,
             IsActive = true,
             CreatedAt = DateTime.UtcNow
         };

@@ -23,6 +23,7 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
     public DbSet<UtilityBill> UtilityBills => Set<UtilityBill>();
     public DbSet<PaymentDebt> PaymentDebts => Set<PaymentDebt>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+    public DbSet<UtilityPricingConfiguration> UtilityPricingConfigurations => Set<UtilityPricingConfiguration>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -42,44 +43,9 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
         modelBuilder.Entity<UtilityBill>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<PaymentDebt>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<AuditLog>().HasQueryFilter(e => !e.IsDeleted);
+        modelBuilder.Entity<UtilityPricingConfiguration>().HasQueryFilter(e => !e.IsDeleted);
         
-        modelBuilder.Entity<Flat>()
-            .HasOne(f => f.Owner)
-            .WithMany(o => o.Flats)
-            .HasForeignKey(f => f.OwnerId)
-            .OnDelete(DeleteBehavior.Restrict);
-        modelBuilder.Entity<Flat>()
-            .HasOne(f => f.Tenant)
-            .WithMany(t => t.Flats)
-            .HasForeignKey(f => f.TenantId)
-            .OnDelete(DeleteBehavior.SetNull);
         
-        modelBuilder.Entity<User>()
-            .HasOne(u => u.Owner)
-            .WithMany(o => o.Users)
-            .HasForeignKey(u => u.OwnerId)
-            .OnDelete(DeleteBehavior.SetNull);
-        modelBuilder.Entity<User>()
-            .HasOne(u => u.Tenant)
-            .WithMany(t => t.Users)
-            .HasForeignKey(u => u.TenantId)
-            .OnDelete(DeleteBehavior.SetNull);
-        
-        modelBuilder.Entity<AdvanceAccount>()
-            .HasOne(aa => aa.Tenant)
-            .WithMany()
-            .HasForeignKey(aa => aa.TenantId)
-            .OnDelete(DeleteBehavior.Restrict);
-        
-        modelBuilder.Entity<PaymentDebt>(entity =>
-        {
-            entity.HasKey(pd => pd.Id);
-            entity.HasOne(pd => pd.Payment)
-                  .WithMany(p => p.PaymentDebts)
-                  .HasForeignKey(pd => pd.PaymentId);
-            // İhtiyaca göre UtilityDebt ile ilişkiyi de ekleyebilirsin
-            // entity.HasOne<UtilityDebt>().WithMany(d => d.PaymentDebts).HasForeignKey(pd => pd.DebtId);
-        });
         
         base.OnModelCreating(modelBuilder);
     }

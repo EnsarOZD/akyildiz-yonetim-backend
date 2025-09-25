@@ -12,7 +12,8 @@ public record UpdateTenantCommand : IRequest<Result>
     // İş Yeri Bilgileri
     public string CompanyName { get; init; } = string.Empty;
     public string BusinessType { get; init; } = string.Empty;
-    public string TaxNumber { get; init; } = string.Empty;
+    public string CompanyType { get; init; } = string.Empty;
+    public string IdentityNumber { get; init; } = string.Empty;
     
     // İletişim Kişisi Bilgileri
     public string ContactPersonName { get; init; } = string.Empty;
@@ -46,7 +47,8 @@ public class UpdateTenantCommandHandler : IRequestHandler<UpdateTenantCommand, R
         
         tenant.CompanyName = request.CompanyName;
         tenant.BusinessType = request.BusinessType;
-        tenant.TaxNumber = request.TaxNumber;
+        tenant.CompanyType = request.CompanyType;
+        tenant.IdentityNumber = request.IdentityNumber;
         tenant.ContactPersonName = request.ContactPersonName;
         tenant.ContactPersonPhone = request.ContactPersonPhone;
         tenant.ContactPersonEmail = request.ContactPersonEmail;

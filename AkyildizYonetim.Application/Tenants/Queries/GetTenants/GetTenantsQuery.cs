@@ -12,156 +12,144 @@ public record GetTenantsQuery : IRequest<Result<List<TenantDto>>>
     public string? SearchTerm { get; init; }
     public DateTime? Period { get; init; }
     public bool? ShowOnlyOccupied { get; init; }
-    public int? Floor { get; init; }
-    public string? Category { get; init; }
+    public int? FloorNumber { get; init; }
 }
 
 public class GetTenantsQueryHandler : IRequestHandler<GetTenantsQuery, Result<List<TenantDto>>>
 {
-    private readonly IApplicationDbContext _context;
+	private readonly IApplicationDbContext _context;
+	public GetTenantsQueryHandler(IApplicationDbContext context) => _context = context;
 
-    public GetTenantsQueryHandler(IApplicationDbContext context)
-    {
-        _context = context;
-    }
+	public async Task<Result<List<TenantDto>>> Handle(GetTenantsQuery request, CancellationToken ct)
+	{
+		var q = _context.Tenants
+			.AsNoTracking()
+			.Where(t => !t.IsDeleted)
+			.AsQueryable();
 
-    public async Task<Result<List<TenantDto>>> Handle(GetTenantsQuery request, CancellationToken cancellationToken)
-    {
-        var query = _context.Tenants.Where(t => !t.IsDeleted).AsQueryable();
+		if (request.IsActive.HasValue)
+			q = q.Where(t => t.IsActive == request.IsActive.Value);
 
-        if (request.IsActive.HasValue)
-            query = query.Where(t => t.IsActive == request.IsActive.Value);
+		if (request.Period.HasValue)
+		{
+			var p = request.Period.Value;
+			q = q.Where(t => t.ContractStartDate <= p &&
+							(t.ContractEndDate == null || t.ContractEndDate >= p));
+		}
 
-        if (request.Period.HasValue)
-        {
-            var period = request.Period.Value;
-            query = query.Where(t =>
-                t.ContractStartDate <= period &&
-                (t.ContractEndDate == null || t.ContractEndDate >= period)
-            );
-        }
+		if (!string.IsNullOrWhiteSpace(request.SearchTerm))
+		{
+			var like = $"%{request.SearchTerm.Trim()}%";
+			q = q.Where(t =>
+				EF.Functions.Like(t.CompanyName, like) ||
+				EF.Functions.Like(t.ContactPersonName, like) ||
+				EF.Functions.Like(t.IdentityNumber, like) ||
+				EF.Functions.Like(t.ContactPersonEmail, like) ||
+				EF.Functions.Like(t.ContactPersonPhone, like));
+		}
 
-        if (!string.IsNullOrWhiteSpace(request.SearchTerm))
-        {
-            var searchTerm = request.SearchTerm.ToLower();
-            query = query.Where(t =>
-                t.CompanyName.ToLower().Contains(searchTerm) ||
-                t.ContactPersonName.ToLower().Contains(searchTerm) ||
-                t.TaxNumber.Contains(searchTerm) ||
-                t.ContactPersonEmail.ToLower().Contains(searchTerm) ||
-                t.ContactPersonPhone.Contains(searchTerm));
-        }
+		if (request.ShowOnlyOccupied.HasValue)
+		{
+			if (request.ShowOnlyOccupied.Value)
+			{
+				// En az bir dolu ünitesi olan kiracılar
+				q = q.Where(t => t.Flats.Any(f => !f.IsDeleted && f.IsOccupied));
+			}
+			else
+			{
+				// Hiç dolu ünitesi olmayan kiracılar
+				q = q.Where(t => !t.Flats.Any(f => !f.IsDeleted && f.IsOccupied));
+			}
+		}
 
-        if (request.ShowOnlyOccupied.HasValue)
-        {
-            if (request.ShowOnlyOccupied.Value)
-            {
-                // Sadece dolu üniteleri olan kiracıları getir
-                query = query.Where(t => t.Flats.Any(f => f.IsOccupied));
-            }
-            else
-            {
-                // Sadece boş üniteleri olan kiracıları getir (bu durumda kiracı olmaz)
-                query = query.Where(t => !t.Flats.Any(f => f.IsOccupied));
-            }
-        }
+		if (request.FloorNumber.HasValue)
+		{
+			var floor = request.FloorNumber.Value;
+			q = q.Where(t => t.Flats.Any(f => !f.IsDeleted && f.FloorNumber == floor));
+		}
 
-        if (request.Floor.HasValue)
-        {
-            query = query.Where(t => t.Flats.Any(f => f.Floor == request.Floor.Value));
-        }
+		var tenants = await q
+			.Select(t => new TenantDto
+			{
+				Id = t.Id,
+				CompanyName = t.CompanyName,
+				BusinessType = t.BusinessType,
+				CompanyType = t.CompanyType,
+				IdentityNumber = t.IdentityNumber,
+				ContactPersonName = t.ContactPersonName,
+				ContactPersonPhone = t.ContactPersonPhone,
+				ContactPersonEmail = t.ContactPersonEmail,
+				MonthlyAidat = t.MonthlyAidat,
+				ContractStartDate = t.ContractStartDate,
+				ContractEndDate = t.ContractEndDate,
+				IsActive = t.IsActive,
+				CreatedAt = t.CreatedAt,
+				UpdatedAt = t.UpdatedAt,
 
-        if (!string.IsNullOrWhiteSpace(request.Category))
-        {
-            query = query.Where(t => t.Flats.Any(f => f.Category == request.Category));
-        }
+				Flats = _context.Flats
+					.Where(f => f.TenantId == t.Id && !f.IsDeleted)
+					.OrderByDescending(f => f.FloorNumber ?? int.MinValue)
+					.Select(f => new TenantFlatInfoDto
+					{
+						Id = f.Id,
+						Code = f.Code,
+						FloorNumber = f.FloorNumber,
+						Type = f.Type,
+						UnitArea = f.UnitArea,
+						IsOccupied = f.IsOccupied
+					})
+					.ToList()
+			})
+			.ToListAsync(ct);
 
-        var tenants = await query
-            .Select(t => new TenantDto
-            {
-                Id = t.Id,
-                CompanyName = t.CompanyName,
-                BusinessType = t.BusinessType,
-                TaxNumber = t.TaxNumber,
-                ContactPersonName = t.ContactPersonName,
-                ContactPersonPhone = t.ContactPersonPhone,
-                ContactPersonEmail = t.ContactPersonEmail,
-                MonthlyAidat = t.MonthlyAidat,
-                ContractStartDate = t.ContractStartDate,
-                ContractEndDate = t.ContractEndDate,
-                IsActive = t.IsActive,
-                CreatedAt = t.CreatedAt,
-                UpdatedAt = t.UpdatedAt,
-                Flats = _context.Flats
-                    .Where(f => f.TenantId == t.Id && !f.IsDeleted)
-                    .Select(f => new FlatInfoDto
-                    {
-                        Id = f.Id,
-                        UnitNumber = f.UnitNumber,
-                        Floor = f.Floor,
-                        UnitArea = f.UnitArea,
-                        Category = f.Category,
-                        IsOccupied = f.IsOccupied
-                    })
-                    .ToList()
-            })
-            .ToListAsync(cancellationToken);
-
-        return Result<List<TenantDto>>.Success(tenants);
-    }
+		return Result<List<TenantDto>>.Success(tenants);
+	}
 }
 
-// Boş üniteleri getiren ayrı query
-public record GetAvailableFlatsQuery : IRequest<Result<List<FlatInfoDto>>>
+public record GetAvailableFlatsQuery : IRequest<Result<List<TenantFlatInfoDto>>>
 {
-    public int? Floor { get; init; }
-    public string? Category { get; init; }
-    public string? SearchTerm { get; init; }
+	public int? FloorNumber { get; init; }
+	public string? SearchTerm { get; init; }
 }
 
-public class GetAvailableFlatsQueryHandler : IRequestHandler<GetAvailableFlatsQuery, Result<List<FlatInfoDto>>>
+public class GetAvailableFlatsQueryHandler : IRequestHandler<GetAvailableFlatsQuery, Result<List<TenantFlatInfoDto>>>
 {
-    private readonly IApplicationDbContext _context;
+	private readonly IApplicationDbContext _context;
+	public GetAvailableFlatsQueryHandler(IApplicationDbContext context) => _context = context;
 
-    public GetAvailableFlatsQueryHandler(IApplicationDbContext context)
-    {
-        _context = context;
-    }
+	public async Task<Result<List<TenantFlatInfoDto>>> Handle(GetAvailableFlatsQuery request, CancellationToken ct)
+	{
+		var q = _context.Flats
+			.AsNoTracking()
+			.Where(f => !f.IsDeleted && f.IsActive && !f.IsOccupied)
+			.AsQueryable();
 
-    public async Task<Result<List<FlatInfoDto>>> Handle(GetAvailableFlatsQuery request, CancellationToken cancellationToken)
-    {
-        var query = _context.Flats.Where(f => !f.IsDeleted && !f.IsOccupied && f.IsActive).AsQueryable();
+		if (request.FloorNumber.HasValue)
+			q = q.Where(f => f.FloorNumber == request.FloorNumber.Value);
 
-        if (request.Floor.HasValue)
-            query = query.Where(f => f.Floor == request.Floor.Value);
+		if (!string.IsNullOrWhiteSpace(request.SearchTerm))
+		{
+			var like = $"%{request.SearchTerm.Trim()}%";
+			q = q.Where(f =>
+				EF.Functions.Like(f.Code, like) ||
+				EF.Functions.Like(f.Number, like) ||        // legacy alanlar, varsa
+				EF.Functions.Like(f.UnitNumber, like));
+		}
 
-        if (!string.IsNullOrWhiteSpace(request.Category))
-            query = query.Where(f => f.Category == request.Category);
+		var list = await q
+			.OrderBy(f => f.FloorNumber ?? int.MinValue)
+			.ThenBy(f => f.Code)
+			.Select(f => new TenantFlatInfoDto
+			{
+				Id = f.Id,
+				Code = f.Code,
+				FloorNumber = f.FloorNumber,
+				Type = f.Type,
+				UnitArea = f.UnitArea,
+				IsOccupied = f.IsOccupied
+			})
+			.ToListAsync(ct);
 
-        if (!string.IsNullOrWhiteSpace(request.SearchTerm))
-        {
-            var searchTerm = request.SearchTerm.ToLower();
-            query = query.Where(f => 
-                f.UnitNumber.ToLower().Contains(searchTerm) ||
-                f.Number.ToLower().Contains(searchTerm));
-        }
-
-        var availableFlats = await query
-            .OrderBy(f => f.Floor)
-            .ThenBy(f => f.UnitNumber)
-            .Select(f => new FlatInfoDto
-            {
-                Id = f.Id,
-                UnitNumber = f.UnitNumber,
-                Floor = f.Floor,
-                UnitArea = f.UnitArea,
-                Category = f.Category,
-                IsOccupied = f.IsOccupied
-            })
-            .ToListAsync(cancellationToken);
-
-        return Result<List<FlatInfoDto>>.Success(availableFlats);
-    }
+		return Result<List<TenantFlatInfoDto>>.Success(list);
+	}
 }
-
-// TenantDto ve FlatInfoDto tanımlarını kaldırıyorum, sadece referans bırakıyorum. 

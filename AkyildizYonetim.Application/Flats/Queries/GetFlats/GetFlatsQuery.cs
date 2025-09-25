@@ -1,59 +1,104 @@
+using AutoMapper;
+using AutoMapper.QueryableExtensions;
 using AkyildizYonetim.Application.Common.Interfaces;
 using AkyildizYonetim.Application.Common.Models;
 using AkyildizYonetim.Application.DTOs;
+using AkyildizYonetim.Application.Flats.Services;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using AkyildizYonetim.Domain.Entities.Enums;
 
-namespace AkyildizYonetim.Application.Flats.Queries.GetFlats;
-
-public record GetFlatsQuery : IRequest<Result<List<FlatDto>>>
+namespace AkyildizYonetim.Application.Flats.Queries.GetFlats
 {
-    public Guid? OwnerId { get; init; }
-    public Guid? TenantId { get; init; }
-    public string? Number { get; init; }
-    public int? Floor { get; init; }
+    public record GetFlatsQuery : IRequest<Result<List<FlatSummaryDto>>>
+    {
+        public Guid? OwnerId { get; init; }
+        public Guid? TenantId { get; init; }
+        public string? Code { get; init; }
+        public int? FloorNumber { get; init; }
+        public FlatEnums.UnitType? Type { get; init; }
+        public bool? IsOccupied { get; init; }
+        public bool? IsActive { get; init; }
+    }
+
+    public class GetFlatsQueryHandler : IRequestHandler<GetFlatsQuery, Result<List<FlatSummaryDto>>>
+    {
+        private readonly IApplicationDbContext _ctx;
+        private readonly IMapper _mapper;
+        private readonly IFlatShareCalculator _share;
+
+        public GetFlatsQueryHandler(IApplicationDbContext ctx, IMapper mapper, IFlatShareCalculator share)
+        {
+            _ctx = ctx;
+            _mapper = mapper;
+            _share = share;
+        }
+
+        public async Task<Result<List<FlatSummaryDto>>> Handle(GetFlatsQuery rq, CancellationToken ct)
+{
+    var q = _ctx.Flats.AsNoTracking()
+        .Include(f => f.Owner).Include(f => f.Tenant)
+        .Where(f => !f.IsDeleted);
+
+    if (rq.OwnerId.HasValue)     q = q.Where(f => f.OwnerId == rq.OwnerId);
+    if (rq.TenantId.HasValue)     q = q.Where(f => f.TenantId == rq.TenantId);
+    if (!string.IsNullOrWhiteSpace(rq.Code)) q = q.Where(f => f.Code == rq.Code);
+    if (rq.FloorNumber.HasValue)  q = q.Where(f => f.FloorNumber == rq.FloorNumber);
+    if (rq.Type.HasValue)         q = q.Where(f => f.Type == rq.Type);
+    if (rq.IsOccupied.HasValue)   q = q.Where(f => f.IsOccupied == rq.IsOccupied);
+    if (rq.IsActive.HasValue)     q = q.Where(f => f.IsActive == rq.IsActive);
+
+    // 1) DTO listesi
+    var list = await q.ProjectTo<FlatSummaryDto>(_mapper.ConfigurationProvider).ToListAsync(ct);
+
+    if (list.Count == 0)
+        return Result<List<FlatSummaryDto>>.Success(list);
+
+    // 2) Pay hesaplaması için gerekli minimal bilgiler
+    var ids = list.Select(d => d.Id).ToArray();
+
+    var minimal = await _ctx.Flats.AsNoTracking()
+        .Where(f => ids.Contains(f.Id))
+        .Select(f => new
+        {
+            f.Id,
+            f.GroupKey,
+            f.GroupStrategy
+        })
+        .ToListAsync(ct);
+
+    var keysWithGroup = minimal
+        .Where(x => x.GroupKey != null)
+        .Select(x => x.GroupKey!)     // NULL değil
+        .Distinct()
+        .ToList();
+
+    var idsWithoutGroup = minimal
+        .Where(x => x.GroupKey == null)
+        .Select(x => x.Id)
+        .ToList();
+
+    // 3) Grup üyelerini getir:
+    //    - GroupKey'i olanlar: aynı GroupKey'deki tüm üyeler
+    //    - GroupKey'i olmayanlar: sadece kendisi
+    var membersByKey = await _ctx.Flats.AsNoTracking()
+        .Where(f => !f.IsDeleted &&
+                   (
+                       (f.GroupKey != null && keysWithGroup.Contains(f.GroupKey)) ||
+                       idsWithoutGroup.Contains(f.Id)
+                   ))
+        .ToListAsync(ct);
+
+    var shares = _share.ComputeEffectiveShares(membersByKey);
+
+    foreach (var dto in list)
+        dto.EffectiveShare = shares.TryGetValue(dto.Id, out var s) ? s : 1m; // fallback 1
+
+    // örnek sıralama
+    list = list.OrderByDescending(d => d.FloorNumber ?? int.MinValue).ToList();
+
+    return Result<List<FlatSummaryDto>>.Success(list);
 }
 
-public class GetFlatsQueryHandler : IRequestHandler<GetFlatsQuery, Result<List<FlatDto>>>
-{
-    private readonly IApplicationDbContext _context;
-    public GetFlatsQueryHandler(IApplicationDbContext context) { _context = context; }
-    public async Task<Result<List<FlatDto>>> Handle(GetFlatsQuery request, CancellationToken cancellationToken)
-    {
-        var query = _context.Flats.Where(f => !f.IsDeleted).AsQueryable();
-        if (request.OwnerId.HasValue)
-            query = query.Where(f => f.OwnerId == request.OwnerId.Value);
-        if (request.TenantId.HasValue)
-            query = query.Where(f => f.TenantId == request.TenantId.Value);
-        if (!string.IsNullOrWhiteSpace(request.Number))
-            query = query.Where(f => f.Number == request.Number);
-        if (request.Floor.HasValue)
-            query = query.Where(f => f.Floor == request.Floor.Value);
-        var flats = await query.OrderBy(f => f.Floor).ThenBy(f => f.Number)
-            .Select(f => new FlatDto
-            {
-                Id = f.Id,
-                Number = f.Number,
-                UnitNumber = f.UnitNumber,
-                Floor = f.Floor,
-                UnitArea = f.UnitArea,
-                RoomCount = f.RoomCount,
-                ApartmentNumber = f.ApartmentNumber,
-                OwnerId = f.OwnerId,
-                TenantId = f.TenantId,
-                IsActive = f.IsActive,
-                IsOccupied = f.IsOccupied,
-                Category = f.Category,
-                ShareCount = f.ShareCount,
-                BusinessType = f.BusinessType,
-                MonthlyRent = f.MonthlyRent,
-                Description = f.Description,
-                CreatedAt = f.CreatedAt,
-                UpdatedAt = f.UpdatedAt
-            })
-            .ToListAsync(cancellationToken);
-        return Result<List<FlatDto>>.Success(flats);
     }
 }
-
- 

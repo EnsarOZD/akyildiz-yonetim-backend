@@ -3,8 +3,10 @@ using AkyildizYonetim.Application.Flats.Commands.DeleteFlat;
 using AkyildizYonetim.Application.Flats.Commands.UpdateFlat;
 using AkyildizYonetim.Application.Flats.Queries.GetFlatById;
 using AkyildizYonetim.Application.Flats.Queries.GetFlats;
+using AkyildizYonetim.Application.DTOs;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using static AkyildizYonetim.Domain.Entities.Enums.FlatEnums; // UnitType için
 
 namespace AkyildizYonetim.API.Controllers;
 
@@ -12,61 +14,73 @@ namespace AkyildizYonetim.API.Controllers;
 [Route("[controller]")]
 public class FlatsController : ControllerBase
 {
-    private readonly IMediator _mediator;
-    public FlatsController(IMediator mediator) { _mediator = mediator; }
+	private readonly IMediator _mediator;
+	public FlatsController(IMediator mediator) { _mediator = mediator; }
 
-    [HttpGet]
-    public async Task<IActionResult> GetFlats([FromQuery] Guid? ownerId, [FromQuery] Guid? tenantId, [FromQuery] string? number, [FromQuery] int? floor)
-    {
-        var result = await _mediator.Send(new GetFlatsQuery { OwnerId = ownerId, TenantId = tenantId, Number = number, Floor = floor });
-        return result.IsSuccess ? Ok(result.Data) : BadRequest(result.ErrorMessage ?? string.Join(", ", result.Errors));
-    }
+	// ?ownerId=&tenantId=&code=&floorNumber=&type=Floor|Entry|Parking&isOccupied=&isActive=
+	[HttpGet]
+	public async Task<IActionResult> GetFlats(
+		[FromQuery] Guid? ownerId,
+		[FromQuery] Guid? tenantId,
+		[FromQuery] string? code,
+		[FromQuery] int? floorNumber,
+		[FromQuery] UnitType? type,
+		[FromQuery] bool? isOccupied,
+		[FromQuery] bool? isActive)
+	{
+		var result = await _mediator.Send(new GetFlatsQuery
+		{
+			OwnerId = ownerId,
+			TenantId = tenantId,
+			Code = code,
+			FloorNumber = floorNumber,
+			Type = type,
+			IsOccupied = isOccupied,
+			IsActive = isActive
+		});
 
-    [HttpGet("{id}")]
-    public async Task<IActionResult> GetFlatById(Guid id)
-    {
-        var result = await _mediator.Send(new GetFlatByIdQuery { Id = id });
-        return result.IsSuccess ? Ok(result.Data) : NotFound(result.ErrorMessage ?? string.Join(", ", result.Errors));
-    }
+		return result.IsSuccess
+			? Ok(result.Data)
+			: BadRequest(result.ErrorMessage ?? string.Join(", ", result.Errors));
+	}
 
-    [HttpPost]
-    public async Task<IActionResult> CreateFlat([FromBody] CreateFlatCommand command)
-    {
-        var result = await _mediator.Send(command);
-        return result.IsSuccess ? CreatedAtAction(nameof(GetFlatById), new { id = result.Data }, null) : BadRequest(result.ErrorMessage ?? string.Join(", ", result.Errors));
-    }
+	[HttpGet("{id:guid}")]
+	public async Task<IActionResult> GetFlatById(Guid id)
+	{
+		var result = await _mediator.Send(new GetFlatByIdQuery { Id = id });
+		return result.IsSuccess
+			? Ok(result.Data)
+			: NotFound(result.ErrorMessage ?? string.Join(", ", result.Errors));
+	}
 
-    [HttpPut("{id}")]
-    public async Task<IActionResult> UpdateFlat(Guid id, [FromBody] UpdateFlatCommand command)
-    {
-        if (id != command.Id)
-            return BadRequest("Id uyuşmuyor.");
-        var result = await _mediator.Send(command);
-        return result.IsSuccess ? NoContent() : BadRequest(result.ErrorMessage ?? string.Join(", ", result.Errors));
-    }
+	// Body: CreateFlatDto
+	[HttpPost]
+	public async Task<IActionResult> CreateFlat([FromBody] CreateFlatDto dto)
+	{
+		var result = await _mediator.Send(new CreateFlatCommand { Dto = dto });
+		return result.IsSuccess
+			? CreatedAtAction(nameof(GetFlatById), new { id = result.Data }, null)
+			: BadRequest(result.ErrorMessage ?? string.Join(", ", result.Errors));
+	}
 
-    [HttpDelete("{id}")]
-    public async Task<IActionResult> DeleteFlat(Guid id)
-    {
-        var result = await _mediator.Send(new DeleteFlatCommand { Id = id });
-        return result.IsSuccess ? NoContent() : NotFound(result.ErrorMessage ?? string.Join(", ", result.Errors));
-    }
+	// Body: UpdateFlatDto (route id ile DTO.Id eşitlenir)
+	[HttpPut("{id:guid}")]
+	public async Task<IActionResult> UpdateFlat(Guid id, [FromBody] UpdateFlatDto dto)
+	{
+		if (id != dto.Id) return BadRequest("Id uyuşmuyor.");
+
+		var result = await _mediator.Send(new UpdateFlatCommand { Dto = dto });
+		return result.IsSuccess
+			? NoContent()
+			: BadRequest(result.ErrorMessage ?? string.Join(", ", result.Errors));
+	}
+
+	[HttpDelete("{id:guid}")]
+	public async Task<IActionResult> DeleteFlat(Guid id)
+	{
+		var result = await _mediator.Send(new DeleteFlatCommand { Id = id });
+		return result.IsSuccess
+			? NoContent()
+			: NotFound(result.ErrorMessage ?? string.Join(", ", result.Errors));
+	}
 }
-
-public class CreateFlatRequest
-{
-    public string FlatNumber { get; set; } = string.Empty;
-    public int Floor { get; set; }
-    public decimal SquareMeters { get; set; }
-    public int OwnerId { get; set; }
-    public string Block { get; set; } = string.Empty;
-}
-
-public class UpdateFlatRequest
-{
-    public string FlatNumber { get; set; } = string.Empty;
-    public int Floor { get; set; }
-    public decimal SquareMeters { get; set; }
-    public int OwnerId { get; set; }
-    public string Block { get; set; } = string.Empty;
-} 

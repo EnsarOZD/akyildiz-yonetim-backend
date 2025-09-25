@@ -18,9 +18,7 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
             .IsRequired()
             .HasMaxLength(100);
             
-        builder.Property(u => u.Email)
-            .IsRequired()
-            .HasMaxLength(255);
+        builder.Property(u => u.Email).IsRequired().HasMaxLength(255).IsUnicode(false);
             
         builder.Property(u => u.PasswordHash)
             .IsRequired()
@@ -42,10 +40,23 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.UpdatedAt);
         
         // Indexes
-        builder.HasIndex(u => u.Email).IsUnique();
+        builder.HasIndex(u => u.Email)
+       .IsUnique()
+       .HasFilter("[IsDeleted] = 0"); // SQL Server: sadece aktif kayıt benzersiz
         builder.HasIndex(u => u.Role);
         builder.HasIndex(u => u.IsActive);
         builder.HasIndex(u => u.OwnerId);
         builder.HasIndex(u => u.TenantId);
+
+        // Relationships
+        builder.HasOne(u => u.Owner)
+       .WithMany(o => o.Users)
+       .HasForeignKey(u => u.OwnerId)
+       .OnDelete(DeleteBehavior.SetNull); 
+
+        builder.HasOne(u => u.Tenant)
+       .WithMany(t => t.Users)
+       .HasForeignKey(u => u.TenantId)
+       .OnDelete(DeleteBehavior.SetNull); 
     }
 } 

@@ -14,14 +14,16 @@ public class AdvanceAccountConfiguration : IEntityTypeConfiguration<AdvanceAccou
             .IsRequired();
             
         builder.Property(aa => aa.Balance)
-            .HasPrecision(18, 2)
-            .IsRequired();
+       .HasPrecision(18, 2)
+       .IsRequired()
+       .HasDefaultValue(0m);
             
         builder.Property(aa => aa.Description)
             .HasMaxLength(500);
             
         builder.Property(aa => aa.IsActive)
-            .IsRequired();
+       .IsRequired()
+       .HasDefaultValue(true);
             
         builder.Property(aa => aa.IsDeleted)
             .IsRequired()
@@ -35,5 +37,15 @@ public class AdvanceAccountConfiguration : IEntityTypeConfiguration<AdvanceAccou
         // Indexes
         builder.HasIndex(aa => aa.TenantId);
         builder.HasIndex(aa => aa.IsActive);
+        builder.HasIndex(aa => new { aa.TenantId, aa.IsActive });
+        builder.HasIndex(aa => aa.TenantId)
+       .IsUnique()
+       .HasFilter("[IsDeleted] = 0 AND [IsActive] = 1");
+
+        // Relationships
+        builder.HasOne(aa => aa.Tenant)
+            .WithMany(t => t.AdvanceAccounts)
+            .HasForeignKey(aa => aa.TenantId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 } 

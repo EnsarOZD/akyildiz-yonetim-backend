@@ -2,6 +2,9 @@ using AkyildizYonetim.Application.MeterReadings.Commands;
 using AkyildizYonetim.Application.MeterReadings.Commands.CreateMeterReading;
 using AkyildizYonetim.Application.MeterReadings.Commands.UpdateMeterReading;
 using AkyildizYonetim.Application.MeterReadings.Commands.DeleteMeterReading;
+using AkyildizYonetim.Application.MeterReadings.Commands.BulkUpsertMeterReadings;
+using AkyildizYonetim.Application.MeterReadings.Commands.ApplySharedConsumption;
+using AkyildizYonetim.Application.Common.Interfaces;
 using AkyildizYonetim.Application.MeterReadings.Queries.GetMeterReadings;
 using AkyildizYonetim.Application.MeterReadings.Queries.GetMeterReadingById;
 using AkyildizYonetim.Application.MeterReadings.DTOs;
@@ -16,10 +19,12 @@ namespace AkyildizYonetim.API.Controllers;
 public class MeterReadingsController : ControllerBase
 {
     private readonly IMediator _mediator;
+    private readonly IUtilityConfigurationService _utilityConfigService;
 
-    public MeterReadingsController(IMediator mediator)
+    public MeterReadingsController(IMediator mediator, IUtilityConfigurationService utilityConfigService)
     {
         _mediator = mediator;
+        _utilityConfigService = utilityConfigService;
     }
 
     [HttpGet]
@@ -128,4 +133,36 @@ public class MeterReadingsController : ControllerBase
         var result = await _mediator.Send(command);
         return Ok(result);
     }
+
+    [HttpPost("apply-shared-consumption")]
+    public async Task<IActionResult> ApplySharedConsumption([FromBody] ApplySharedConsumptionCommand command)
+    {
+        var result = await _mediator.Send(command);
+        return result.IsSuccess 
+            ? Ok(result.Data) 
+            : BadRequest(result.ErrorMessage ?? string.Join(", ", result.Errors));
+    }
+
+    [HttpGet("pricing/{year}/{month}/{type}")]
+    public async Task<IActionResult> GetPricing(int year, int month, MeterType type)
+    {
+        try
+        {
+            var pricing = await _utilityConfigService.GetPricingAsync(year, month, type);
+            return Ok(pricing);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest($"Fiyatlandırma bilgileri alınırken hata oluştu: {ex.Message}");
+        }
+    }
+
+    [HttpPost("bulk-upsert")]
+public async Task<IActionResult> BulkUpsert([FromBody] BulkUpsertMeterReadingsCommand command)
+{
+    var result = await _mediator.Send(command);
+    return result.IsSuccess 
+        ? Ok(new { affected = result.Data }) 
+        : BadRequest(result.ErrorMessage ?? string.Join(", ", result.Errors));
+}
 } 

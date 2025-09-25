@@ -29,8 +29,10 @@ namespace AkyildizYonetim.Infrastructure.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<decimal>("Balance")
+                        .ValueGeneratedOnAdd()
                         .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)");
+                        .HasColumnType("decimal(18,2)")
+                        .HasDefaultValue(0m);
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -40,7 +42,9 @@ namespace AkyildizYonetim.Infrastructure.Migrations
                         .HasColumnType("nvarchar(500)");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
 
                     b.Property<bool>("IsDeleted")
                         .ValueGeneratedOnAdd()
@@ -57,7 +61,11 @@ namespace AkyildizYonetim.Infrastructure.Migrations
 
                     b.HasIndex("IsActive");
 
-                    b.HasIndex("TenantId");
+                    b.HasIndex("TenantId")
+                        .IsUnique()
+                        .HasFilter("[IsDeleted] = 0 AND [IsActive] = 1");
+
+                    b.HasIndex("TenantId", "IsActive");
 
                     b.ToTable("AdvanceAccounts");
                 });
@@ -252,17 +260,10 @@ namespace AkyildizYonetim.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("BusinessType")
+                    b.Property<string>("Code")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("Category")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
-                        .HasDefaultValue("Normal");
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -272,8 +273,19 @@ namespace AkyildizYonetim.Infrastructure.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
-                    b.Property<int>("Floor")
+                    b.Property<int?>("FloorNumber")
                         .HasColumnType("int");
+
+                    b.Property<string>("GroupKey")
+                        .HasMaxLength(8)
+                        .HasColumnType("nvarchar(8)");
+
+                    b.Property<string>("GroupStrategy")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(24)
+                        .HasColumnType("nvarchar(24)")
+                        .HasDefaultValue("None");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
@@ -299,11 +311,12 @@ namespace AkyildizYonetim.Infrastructure.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
-                    b.Property<Guid>("OwnerId")
+                    b.Property<Guid?>("OwnerId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<int>("RoomCount")
-                        .HasColumnType("int");
+                    b.Property<string>("Section")
+                        .HasMaxLength(4)
+                        .HasColumnType("nvarchar(4)");
 
                     b.Property<int>("ShareCount")
                         .ValueGeneratedOnAdd()
@@ -312,6 +325,13 @@ namespace AkyildizYonetim.Infrastructure.Migrations
 
                     b.Property<Guid?>("TenantId")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(16)
+                        .HasColumnType("nvarchar(16)")
+                        .HasDefaultValue("Floor");
 
                     b.Property<decimal>("UnitArea")
                         .HasPrecision(10, 2)
@@ -327,9 +347,16 @@ namespace AkyildizYonetim.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("Category");
+                    b.HasIndex("Code")
+                        .IsUnique()
+                        .HasDatabaseName("UX_Flats_Code_ActiveOnly")
+                        .HasFilter("[IsDeleted] = 0");
 
-                    b.HasIndex("Floor");
+                    b.HasIndex("FloorNumber");
+
+                    b.HasIndex("GroupKey");
+
+                    b.HasIndex("GroupStrategy");
 
                     b.HasIndex("IsActive");
 
@@ -341,9 +368,11 @@ namespace AkyildizYonetim.Infrastructure.Migrations
 
                     b.HasIndex("TenantId");
 
+                    b.HasIndex("Type");
+
                     b.HasIndex("UnitNumber");
 
-                    b.ToTable("Flats");
+                    b.ToTable("Flats", (string)null);
                 });
 
             modelBuilder.Entity("AkyildizYonetim.Domain.Entities.MeterReading", b =>
@@ -477,7 +506,8 @@ namespace AkyildizYonetim.Infrastructure.Migrations
 
                     b.Property<string>("Description")
                         .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(500)");
 
                     b.Property<bool>("IsDeleted")
                         .ValueGeneratedOnAdd()
@@ -492,7 +522,8 @@ namespace AkyildizYonetim.Infrastructure.Migrations
 
                     b.Property<string>("ReceiptNumber")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(100)");
 
                     b.Property<int>("Status")
                         .HasColumnType("int");
@@ -512,13 +543,24 @@ namespace AkyildizYonetim.Infrastructure.Migrations
 
                     b.HasIndex("PaymentDate");
 
+                    b.HasIndex("ReceiptNumber")
+                        .IsUnique()
+                        .HasFilter("[IsDeleted] = 0 AND [ReceiptNumber] IS NOT NULL");
+
                     b.HasIndex("Status");
 
                     b.HasIndex("TenantId");
 
                     b.HasIndex("Type");
 
-                    b.ToTable("Payments");
+                    b.HasIndex("OwnerId", "PaymentDate");
+
+                    b.HasIndex("TenantId", "PaymentDate");
+
+                    b.ToTable("Payments", t =>
+                        {
+                            t.HasCheckConstraint("CK_Payments_Amount_Positive", "[Amount] >= 0");
+                        });
                 });
 
             modelBuilder.Entity("AkyildizYonetim.Domain.Entities.PaymentDebt", b =>
@@ -543,6 +585,9 @@ namespace AkyildizYonetim.Infrastructure.Migrations
                     b.Property<Guid>("PaymentId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
@@ -555,9 +600,14 @@ namespace AkyildizYonetim.Infrastructure.Migrations
 
                     b.HasIndex("PaymentId");
 
+                    b.HasIndex("TenantId");
+
                     b.HasIndex("UtilityDebtId");
 
-                    b.ToTable("PaymentDebts");
+                    b.ToTable("PaymentDebts", t =>
+                        {
+                            t.HasCheckConstraint("CK_PaymentDebts_PaidAmount_Positive", "[PaidAmount] >= 0");
+                        });
                 });
 
             modelBuilder.Entity("AkyildizYonetim.Domain.Entities.Tenant", b =>
@@ -576,6 +626,11 @@ namespace AkyildizYonetim.Infrastructure.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<string>("CompanyType")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
                     b.Property<string>("ContactPersonEmail")
                         .IsRequired()
                         .HasMaxLength(255)
@@ -589,7 +644,8 @@ namespace AkyildizYonetim.Infrastructure.Migrations
                     b.Property<string>("ContactPersonPhone")
                         .IsRequired()
                         .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(20)");
 
                     b.Property<DateTime?>("ContractEndDate")
                         .HasColumnType("datetime2");
@@ -599,6 +655,12 @@ namespace AkyildizYonetim.Infrastructure.Migrations
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
+
+                    b.Property<string>("IdentityNumber")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(20)");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
@@ -612,11 +674,6 @@ namespace AkyildizYonetim.Infrastructure.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
-                    b.Property<string>("TaxNumber")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
@@ -628,10 +685,11 @@ namespace AkyildizYonetim.Infrastructure.Migrations
 
                     b.HasIndex("ContactPersonPhone");
 
-                    b.HasIndex("IsActive");
+                    b.HasIndex("IdentityNumber")
+                        .IsUnique()
+                        .HasFilter("[IsDeleted] = 0");
 
-                    b.HasIndex("TaxNumber")
-                        .IsUnique();
+                    b.HasIndex("IsActive");
 
                     b.ToTable("Tenants");
                 });
@@ -648,7 +706,8 @@ namespace AkyildizYonetim.Infrastructure.Migrations
                     b.Property<string>("Email")
                         .IsRequired()
                         .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)");
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(255)");
 
                     b.Property<string>("FirstName")
                         .IsRequired()
@@ -688,7 +747,8 @@ namespace AkyildizYonetim.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("Email")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("[IsDeleted] = 0");
 
                     b.HasIndex("IsActive");
 
@@ -829,10 +889,78 @@ namespace AkyildizYonetim.Infrastructure.Migrations
                     b.ToTable("UtilityDebts");
                 });
 
+            modelBuilder.Entity("AkyildizYonetim.Domain.Entities.UtilityPricingConfiguration", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("BtvRate")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("decimal(5,2)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTime>("EffectiveDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("ExpiryDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
+                    b.Property<int>("MeterType")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Month")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("UnitPrice")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("VatRate")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("decimal(5,2)");
+
+                    b.Property<int>("Year")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IsActive")
+                        .HasDatabaseName("IX_UtilityPricing_IsActive");
+
+                    b.HasIndex("EffectiveDate", "ExpiryDate")
+                        .HasDatabaseName("IX_UtilityPricing_EffectiveDate");
+
+                    b.HasIndex("MeterType", "Year", "Month")
+                        .HasDatabaseName("IX_UtilityPricing_Type_Year_Month");
+
+                    b.ToTable("UtilityPricingConfigurations");
+                });
+
             modelBuilder.Entity("AkyildizYonetim.Domain.Entities.AdvanceAccount", b =>
                 {
                     b.HasOne("AkyildizYonetim.Domain.Entities.Tenant", "Tenant")
-                        .WithMany()
+                        .WithMany("AdvanceAccounts")
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
@@ -865,8 +993,7 @@ namespace AkyildizYonetim.Infrastructure.Migrations
                     b.HasOne("AkyildizYonetim.Domain.Entities.Owner", "Owner")
                         .WithMany("Flats")
                         .HasForeignKey("OwnerId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("AkyildizYonetim.Domain.Entities.Tenant", "Tenant")
                         .WithMany("Flats")
@@ -893,12 +1020,13 @@ namespace AkyildizYonetim.Infrastructure.Migrations
                 {
                     b.HasOne("AkyildizYonetim.Domain.Entities.Owner", "Owner")
                         .WithMany("Payments")
-                        .HasForeignKey("OwnerId");
+                        .HasForeignKey("OwnerId")
+                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.HasOne("AkyildizYonetim.Domain.Entities.Tenant", "Tenant")
                         .WithMany("Payments")
                         .HasForeignKey("TenantId")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("Owner");
 
@@ -910,14 +1038,18 @@ namespace AkyildizYonetim.Infrastructure.Migrations
                     b.HasOne("AkyildizYonetim.Domain.Entities.UtilityDebt", "Debt")
                         .WithMany()
                         .HasForeignKey("DebtId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("AkyildizYonetim.Domain.Entities.Payment", "Payment")
                         .WithMany("PaymentDebts")
                         .HasForeignKey("PaymentId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("AkyildizYonetim.Domain.Entities.Tenant", null)
+                        .WithMany("PaymentDebts")
+                        .HasForeignKey("TenantId");
 
                     b.HasOne("AkyildizYonetim.Domain.Entities.UtilityDebt", null)
                         .WithMany("PaymentDebts")
@@ -986,7 +1118,11 @@ namespace AkyildizYonetim.Infrastructure.Migrations
 
             modelBuilder.Entity("AkyildizYonetim.Domain.Entities.Tenant", b =>
                 {
+                    b.Navigation("AdvanceAccounts");
+
                     b.Navigation("Flats");
+
+                    b.Navigation("PaymentDebts");
 
                     b.Navigation("Payments");
 

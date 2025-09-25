@@ -19,9 +19,14 @@ public class TenantConfiguration : IEntityTypeConfiguration<Tenant>
             .IsRequired()
             .HasMaxLength(100);
             
-        builder.Property(t => t.TaxNumber)
+        builder.Property(t => t.CompanyType)
             .IsRequired()
             .HasMaxLength(20);
+            
+        builder.Property(t => t.IdentityNumber)
+            .IsRequired()
+            .HasMaxLength(20)
+            .IsUnicode(false);
         
         // İletişim Kişisi Bilgileri
         builder.Property(t => t.ContactPersonName)
@@ -30,7 +35,8 @@ public class TenantConfiguration : IEntityTypeConfiguration<Tenant>
             
         builder.Property(t => t.ContactPersonPhone)
             .IsRequired()
-            .HasMaxLength(20);
+            .HasMaxLength(20)
+            .IsUnicode(false);
             
         builder.Property(t => t.ContactPersonEmail)
             .HasMaxLength(255);
@@ -58,25 +64,12 @@ public class TenantConfiguration : IEntityTypeConfiguration<Tenant>
         
         // Indexes
         builder.HasIndex(t => t.CompanyName);
-        builder.HasIndex(t => t.TaxNumber).IsUnique();
+        builder.HasIndex(t => t.IdentityNumber)
+        .IsUnique()
+        .HasFilter("[IsDeleted] = 0"); // SQL Server: sadece aktif kayıt benzersiz
         builder.HasIndex(t => t.ContactPersonEmail);
         builder.HasIndex(t => t.ContactPersonPhone);
-        builder.HasIndex(t => t.IsActive);
+        builder.HasIndex(t => t.IsActive);        
         
-        // Relationships
-        builder.HasMany(t => t.Flats)
-            .WithOne(f => f.Tenant)
-            .HasForeignKey(f => f.TenantId)
-            .OnDelete(DeleteBehavior.Restrict);
-            
-        builder.HasMany(t => t.Payments)
-            .WithOne(p => p.Tenant)
-            .HasForeignKey(p => p.TenantId)
-            .OnDelete(DeleteBehavior.Restrict);
-            
-        builder.HasMany(t => t.Users)
-            .WithOne(u => u.Tenant)
-            .HasForeignKey(u => u.TenantId)
-            .OnDelete(DeleteBehavior.Restrict);
     }
 } 

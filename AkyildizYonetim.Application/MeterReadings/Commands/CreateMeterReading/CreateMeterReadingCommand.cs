@@ -84,19 +84,29 @@ public class CreateMeterReadingCommandHandler : IRequestHandler<CreateMeterReadi
             if (existingReading != null)
                 return Result<Guid>.Failure($"Bu dönem için {request.Type} sayacı okuması zaten mevcut");
 
-            var meterReading = new MeterReading
-            {
-                Id = Guid.NewGuid(),
-                FlatId = request.FlatId,
-                Type = request.Type,
-                PeriodYear = request.PeriodYear,
-                PeriodMonth = request.PeriodMonth,
-                ReadingValue = request.ReadingValue,
-                Consumption = request.Consumption,
-                ReadingDate = request.ReadingDate,
-                Note = request.Note,
-                CreatedAt = DateTime.UtcNow
-            };
+            var prev = await _context.MeterReadings
+    .Where(mr => !mr.IsDeleted && mr.FlatId == request.FlatId && mr.Type == request.Type &&
+                 (mr.PeriodYear < request.PeriodYear ||
+                 (mr.PeriodYear == request.PeriodYear && mr.PeriodMonth < request.PeriodMonth)))
+    .OrderByDescending(mr => mr.PeriodYear).ThenByDescending(mr => mr.PeriodMonth)
+    .FirstOrDefaultAsync(cancellationToken);
+
+var prevValue = prev?.ReadingValue ?? 0;
+var consumption = request.Consumption > 0 ? request.Consumption : Math.Max(0, request.ReadingValue - prevValue);
+
+var meterReading = new MeterReading
+{
+    Id = Guid.NewGuid(),
+    FlatId = request.FlatId,
+    Type = request.Type,
+    PeriodYear = request.PeriodYear,
+    PeriodMonth = request.PeriodMonth,
+    ReadingValue = request.ReadingValue,
+    Consumption = consumption,                 // <-- burada set
+    ReadingDate = request.ReadingDate,
+    Note = request.Note,
+    CreatedAt = DateTime.UtcNow
+};
 
             _context.MeterReadings.Add(meterReading);
             await _context.SaveChangesAsync(cancellationToken);
