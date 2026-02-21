@@ -9,7 +9,7 @@ using System.Net.Mail;
 using System.Net;
 
 using Microsoft.Extensions.Options;
-using AkyildizYonetim.Application.Common.Models;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace AkyildizYonetim.Application.Users.Commands.CreateUser;
 
