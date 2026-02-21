@@ -26,16 +26,15 @@ public record CreateUserCommand : IRequest<Result<Guid>>
 public class CreateUserCommandHandler : IRequestHandler<CreateUserCommand, Result<Guid>>
 {
     private readonly IApplicationDbContext _context;
-    private readonly IEmailSender _emailSender;
-    private readonly ClientSettings _clientSettings;
+    private readonly IServiceScopeFactory _serviceScopeFactory;
 
     public CreateUserCommandHandler(
         IApplicationDbContext context, 
-        IEmailSender emailSender,
+        IServiceScopeFactory serviceScopeFactory,
         IOptions<ClientSettings> clientSettings)
     {
         _context = context;
-        _emailSender = emailSender;
+        _serviceScopeFactory = serviceScopeFactory;
         _clientSettings = clientSettings.Value;
     }
 
@@ -73,18 +72,28 @@ public class CreateUserCommandHandler : IRequestHandler<CreateUserCommand, Resul
 
         // Şifre belirleme linki (Frontend URL)
         var resetLink = $"{_clientSettings.ClientUrl}/set-password?token={resetToken}&email={user.Email}";
+        var mailBody = $"<p>Sayın {user.FirstName} {user.LastName},</p>" +
+                       $"<p>Akyıldız Yönetim sisteminde hesabınız başarıyla oluşturuldu.</p>" +
+                       $"<p>Giriş yapabilmek için lütfen aşağıdaki bağlantıya tıklayarak şifrenizi belirleyin:</p>" +
+                       $"<p><a href='{resetLink}' style='padding: 10px 20px; background-color: #4F46E5; color: white; text-decoration: none; border-radius: 5px;'>Şifremi Belirle</a></p>" +
+                       $"<p>Bu bağlantı 3 gün boyunca geçerlidir.</p>" +
+                       $"<p>Eğer butona tıklayamıyorsanız şu bağlantıyı tarayıcınıza yapıştırabilirsiniz:<br>{resetLink}</p>";
 
-        // E-posta gönder
-        await _emailSender.SendEmailAsync(
-            user.Email, 
-            "Hesabınız Oluşturuldu - Şifre Belirleme", 
-            $"<p>Sayın {user.FirstName} {user.LastName},</p>" +
-            $"<p>Akyıldız Yönetim sisteminde hesabınız başarıyla oluşturuldu.</p>" +
-            $"<p>Giriş yapabilmek için lütfen aşağıdaki bağlantıya tıklayarak şifrenizi belirleyin:</p>" +
-            $"<p><a href='{resetLink}' style='padding: 10px 20px; background-color: #4F46E5; color: white; text-decoration: none; border-radius: 5px;'>Şifremi Belirle</a></p>" +
-            $"<p>Bu bağlantı 3 gün boyunca geçerlidir.</p>" +
-            $"<p>Eğer butona tıklayamıyorsanız şu bağlantıyı tarayıcınıza yapıştırabilirsiniz:<br>{resetLink}</p>"
-        );
+        // E-posta gönderimini arka plana at (UI beklemesin)
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                using var scope = _serviceScopeFactory.CreateScope();
+                var emailSender = scope.ServiceProvider.GetRequiredService<IEmailSender>();
+                await emailSender.SendEmailAsync(request.Email, "Hesabınız Oluşturuldu - Şifre Belirleme", mailBody);
+            }
+            catch (Exception ex)
+            {
+                // Hata günlüğe kaydedilir (System.Console veya ILogger)
+                System.Console.WriteLine($"❌ Arka planda e-posta gönderim hatası: {ex.Message}");
+            }
+        });
 
         return Result<Guid>.Success(user.Id);
     }

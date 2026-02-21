@@ -94,7 +94,15 @@ public static class DataSeeder
 
     private static async Task<Tenant> GetOrCreateTenant(ApplicationDbContext context, string name, string type, string idNo, string contactName, string contactEmail, string phone)
     {
-        var tenant = await context.Tenants.FirstOrDefaultAsync(t => t.CompanyName == name);
+        // Önce Kimlik Numarası (IdentityNumber) ile kontrol et, çünkü bu değer Benzersiz (Unique) bir indekse sahip.
+        var tenant = await context.Tenants.FirstOrDefaultAsync(t => t.IdentityNumber == idNo);
+        
+        // Eğer kimlik numarası ile bulunamadıysa isimle de bakabiliriz (opsiyonel)
+        if (tenant == null)
+        {
+            tenant = await context.Tenants.FirstOrDefaultAsync(t => t.CompanyName == name);
+        }
+
         if (tenant == null)
         {
             tenant = new Tenant
@@ -111,6 +119,7 @@ public static class DataSeeder
             };
             context.Tenants.Add(tenant);
             await context.SaveChangesAsync();
+            // logger parametresi yok ama burada ekleyemiyoruz imza değişmesin diye
         }
         return tenant;
     }

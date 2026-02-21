@@ -28,7 +28,8 @@ public class EmailSender : IEmailSender
             using var client = new SmtpClient(_settings.Host, _settings.Port)
             {
                 Credentials = new NetworkCredential(_settings.User, _settings.Password),
-                EnableSsl = true
+                EnableSsl = true,
+                Timeout = 10000 // 10 saniye timeout
             };
 
             // Sertifika hataları nedeniyle gönderimin durmaması için (Debug amaçlı)
