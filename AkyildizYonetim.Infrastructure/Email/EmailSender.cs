@@ -18,7 +18,7 @@ public class EmailSender : IEmailSender
     {
         try
         {
-            System.Console.WriteLine($"📧 E-posta gönderiliyor: {to} | Konu: {subject}");
+            System.Console.WriteLine($"📧 E-posta gönderiliyor: {to} | Sunucu: {_settings.Host}:{_settings.Port} | SSL: {_settings.UseSsl} | Konu: {subject}");
             
             var message = new MailMessage(_settings.From, to, subject, body)
             {
@@ -28,7 +28,7 @@ public class EmailSender : IEmailSender
             using var client = new SmtpClient(_settings.Host, _settings.Port)
             {
                 Credentials = new NetworkCredential(_settings.User, _settings.Password),
-                EnableSsl = true,
+                EnableSsl = _settings.UseSsl,
                 Timeout = 10000 // 10 saniye timeout
             };
 
