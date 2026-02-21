@@ -11,7 +11,6 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.ComponentModel.DataAnnotations;
 using AkyildizYonetim.Domain.Entities;
-using AkyildizYonetim.Application.Payments.Commands.CreatePayment;
 
 
 namespace AkyildizYonetim.API.Controllers;

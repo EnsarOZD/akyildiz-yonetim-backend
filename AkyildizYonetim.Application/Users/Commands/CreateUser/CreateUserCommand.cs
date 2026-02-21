@@ -27,6 +27,7 @@ public class CreateUserCommandHandler : IRequestHandler<CreateUserCommand, Resul
 {
     private readonly IApplicationDbContext _context;
     private readonly IServiceScopeFactory _serviceScopeFactory;
+    private readonly ClientSettings _clientSettings;
 
     public CreateUserCommandHandler(
         IApplicationDbContext context, 
