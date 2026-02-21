@@ -14,7 +14,6 @@ public static class DependencyInjection
         var connectionString = configuration.GetConnectionString("DefaultConnection") ??
             throw new InvalidOperationException("DefaultConnection is not configured");
 
-        services.Configure<AkyildizYonetim.Infrastructure.Email.SmtpSettings>(configuration.GetSection("SmtpSettings"));
         services.Configure<AkyildizYonetim.Application.Common.Models.ClientSettings>(configuration.GetSection("ClientSettings"));
 
         services.AddDbContext<ApplicationDbContext>(options =>
@@ -26,7 +25,8 @@ public static class DependencyInjection
         services.AddScoped<ICurrentUserService, AkyildizYonetim.Infrastructure.Services.CurrentUserService>();
 
         services.AddScoped<IJwtService, JwtService>();
-        services.AddScoped<IEmailSender, AkyildizYonetim.Infrastructure.Email.EmailSender>();
+        services.AddScoped<IAppUrlBuilder, AkyildizYonetim.Infrastructure.Services.AppUrlBuilder>();
+        services.AddScoped<IEmailSender, AkyildizYonetim.Infrastructure.Email.PostmarkEmailSender>();
 
         return services;
     }

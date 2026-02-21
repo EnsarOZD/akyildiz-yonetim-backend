@@ -5,10 +5,6 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Cryptography;
 using System.Text;
-using System.Net.Mail;
-using System.Net;
-
-using Microsoft.Extensions.Options;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace AkyildizYonetim.Application.Users.Commands.CreateUser;
@@ -27,16 +23,13 @@ public class CreateUserCommandHandler : IRequestHandler<CreateUserCommand, Resul
 {
     private readonly IApplicationDbContext _context;
     private readonly IServiceScopeFactory _serviceScopeFactory;
-    private readonly ClientSettings _clientSettings;
 
     public CreateUserCommandHandler(
         IApplicationDbContext context, 
-        IServiceScopeFactory serviceScopeFactory,
-        IOptions<ClientSettings> clientSettings)
+        IServiceScopeFactory serviceScopeFactory)
     {
         _context = context;
         _serviceScopeFactory = serviceScopeFactory;
-        _clientSettings = clientSettings.Value;
     }
 
     public async Task<Result<Guid>> Handle(CreateUserCommand request, CancellationToken cancellationToken)
@@ -71,15 +64,6 @@ public class CreateUserCommandHandler : IRequestHandler<CreateUserCommand, Resul
         _context.Users.Add(user);
         await _context.SaveChangesAsync(cancellationToken);
 
-        // Şifre belirleme linki (Frontend URL)
-        var resetLink = $"{_clientSettings.ClientUrl}/set-password?token={resetToken}&email={user.Email}";
-        var mailBody = $"<p>Sayın {user.FirstName} {user.LastName},</p>" +
-                       $"<p>Akyıldız Yönetim sisteminde hesabınız başarıyla oluşturuldu.</p>" +
-                       $"<p>Giriş yapabilmek için lütfen aşağıdaki bağlantıya tıklayarak şifrenizi belirleyin:</p>" +
-                       $"<p><a href='{resetLink}' style='padding: 10px 20px; background-color: #4F46E5; color: white; text-decoration: none; border-radius: 5px;'>Şifremi Belirle</a></p>" +
-                       $"<p>Bu bağlantı 3 gün boyunca geçerlidir.</p>" +
-                       $"<p>Eğer butona tıklayamıyorsanız şu bağlantıyı tarayıcınıza yapıştırabilirsiniz:<br>{resetLink}</p>";
-
         // E-posta gönderimini arka plana at (UI beklemesin)
         _ = Task.Run(async () =>
         {
@@ -87,11 +71,14 @@ public class CreateUserCommandHandler : IRequestHandler<CreateUserCommand, Resul
             {
                 using var scope = _serviceScopeFactory.CreateScope();
                 var emailSender = scope.ServiceProvider.GetRequiredService<IEmailSender>();
-                await emailSender.SendEmailAsync(request.Email, "Hesabınız Oluşturuldu - Şifre Belirleme", mailBody);
+                var urlBuilder = scope.ServiceProvider.GetRequiredService<IAppUrlBuilder>();
+
+                var resetLink = urlBuilder.BuildInvitationLink(resetToken, user.Email);
+                
+                await emailSender.SendInvitationEmailAsync(request.Email, resetLink);
             }
             catch (Exception ex)
             {
-                // Hata günlüğe kaydedilir (System.Console veya ILogger)
                 System.Console.WriteLine($"❌ Arka planda e-posta gönderim hatası: {ex.Message}");
             }
         });

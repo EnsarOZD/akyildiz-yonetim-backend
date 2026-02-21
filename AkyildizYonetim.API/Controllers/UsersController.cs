@@ -107,7 +107,7 @@ public class UsersController : ControllerBase
     }
 
     [HttpPost("{id}/reset-password")]
-    public async Task<IActionResult> ResetPassword(Guid id)
+    public async Task<IActionResult> ResetPassword(Guid id, [FromServices] IAppUrlBuilder urlBuilder)
     {
         var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == id && !u.IsDeleted);
         if (user == null) return NotFound("Kullanıcı bulunamadı.");
@@ -120,20 +120,11 @@ public class UsersController : ControllerBase
 
         await _context.SaveChangesAsync(default);
 
-        // Şifre sıfırlama linki (Frontend URL)
-        var resetLink = $"{_clientSettings.ClientUrl}/set-password?token={resetToken}&email={user.Email}";
+        // Şifre sıfırlama linki
+        var resetLink = urlBuilder.BuildResetPasswordLink(resetToken, user.Email);
 
         // E-posta gönder
-        await _emailSender.SendEmailAsync(
-            user.Email, 
-            "Şifre Sıfırlama Talebi - Akyıldız Yönetim", 
-            $"<p>Sayın {user.FirstName} {user.LastName},</p>" +
-            $"<p>Hesabınız için şifre sıfırlama talebi oluşturulmuştur.</p>" +
-            $"<p>Yeni şifrenizi belirlemek için lütfen aşağıdaki bağlantıya tıklayın:</p>" +
-            $"<p><a href='{resetLink}' style='padding: 10px 20px; background-color: #F59E0B; color: white; text-decoration: none; border-radius: 5px;'>Şifremi Sıfırla</a></p>" +
-            $"<p>Bu bağlantı 24 saat boyunca geçerlidir.</p>" +
-            $"<p>Eğer bu talebi siz yapmadıysanız lütfen yöneticinizle iletişime geçin.</p>"
-        );
+        await _emailSender.SendPasswordResetEmailAsync(user.Email, resetLink);
 
         return Ok(new { message = "Şifre sıfırlama bağlantısı e-posta ile gönderildi." });
     }
