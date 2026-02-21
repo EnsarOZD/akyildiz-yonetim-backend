@@ -67,53 +67,32 @@ namespace AkyildizYonetim.Application.Flats.Queries.GetFlats
     if (rq.IsOccupied.HasValue)   q = q.Where(f => f.IsOccupied == rq.IsOccupied);
     if (rq.IsActive.HasValue)     q = q.Where(f => f.IsActive == rq.IsActive);
 
-    // 1) DTO listesi
+    // 1) DTO listesi (Mapping artık GroupKey ve GroupStrategy içeriyor)
     var list = await q.ProjectTo<FlatSummaryDto>(_mapper.ConfigurationProvider).ToListAsync(ct);
 
     if (list.Count == 0)
         return Result<List<FlatSummaryDto>>.Success(list);
 
-    // 2) Pay hesaplaması için gerekli minimal bilgiler
-    var ids = list.Select(d => d.Id).ToArray();
+    // 2) Pay hesaplaması için gerekli tüm üyeleri getir:
+    // SQL'deki OPENJSON hatasını ('$' yakınındaki sözdizimi yanlış) önlemek için 
+    // ve performansı korumak için ilgili tüm Flat'leri tek seferde çekip hafızada filtreliyoruz.
+    var groupKeys = list.Where(l => l.GroupKey != null).Select(l => l.GroupKey).Distinct().ToList();
+    var listIds = list.Select(l => l.Id).ToHashSet();
 
-    var minimal = await _ctx.Flats.AsNoTracking()
-        .Where(f => ids.Contains(f.Id))
-        .Select(f => new
-        {
-            f.Id,
-            f.GroupKey,
-            f.GroupStrategy
-        })
+    var allFlats = await _ctx.Flats.AsNoTracking()
+        .Where(f => !f.IsDeleted)
         .ToListAsync(ct);
 
-    var keysWithGroup = minimal
-        .Where(x => x.GroupKey != null)
-        .Select(x => x.GroupKey!)     // NULL değil
-        .Distinct()
+    var membersByKey = allFlats
+        .Where(f => (f.GroupKey != null && groupKeys.Contains(f.GroupKey)) || listIds.Contains(f.Id))
         .ToList();
-
-    var idsWithoutGroup = minimal
-        .Where(x => x.GroupKey == null)
-        .Select(x => x.Id)
-        .ToList();
-
-    // 3) Grup üyelerini getir:
-    //    - GroupKey'i olanlar: aynı GroupKey'deki tüm üyeler
-    //    - GroupKey'i olmayanlar: sadece kendisi
-    var membersByKey = await _ctx.Flats.AsNoTracking()
-        .Where(f => !f.IsDeleted &&
-                   (
-                       (f.GroupKey != null && keysWithGroup.Contains(f.GroupKey)) ||
-                       idsWithoutGroup.Contains(f.Id)
-                   ))
-        .ToListAsync(ct);
 
     var shares = _share.ComputeEffectiveShares(membersByKey);
 
     foreach (var dto in list)
-        dto.EffectiveShare = shares.TryGetValue(dto.Id, out var s) ? s : 1m; // fallback 1
+        dto.EffectiveShare = shares.TryGetValue(dto.Id, out var s) ? s : 1m;
 
-    // örnek sıralama
+    // Örnek sıralama (Kat numarasına göre iniş)
     list = list.OrderByDescending(d => d.FloorNumber ?? int.MinValue).ToList();
 
     return Result<List<FlatSummaryDto>>.Success(list);

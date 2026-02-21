@@ -54,6 +54,8 @@ public class FlatSummaryDto
 	public Guid? TenantId { get; set; }
 	public string OwnerName { get; set; } = string.Empty;
 	public string? TenantCompanyName { get; set; }
+	public string? GroupKey { get; set; }
+	public GroupStrategy GroupStrategy { get; set; }
 }
 
 // Flat oluşturma için
