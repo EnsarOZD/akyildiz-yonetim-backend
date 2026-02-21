@@ -2,6 +2,7 @@ using AkyildizYonetim.Application.Common.Interfaces;
 using AkyildizYonetim.Application.Common.Models;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using AkyildizYonetim.Application.DTOs;
 
 namespace AkyildizYonetim.Application.Tenants.Queries.GetTenantById;
 
@@ -25,19 +26,26 @@ public class GetTenantByIdQueryHandler : IRequestHandler<GetTenantByIdQuery, Res
 				Id = t.Id,
 				CompanyName = t.CompanyName,
 				BusinessType = t.BusinessType,
-				CompanyType = t.CompanyType,
 				IdentityNumber = t.IdentityNumber,
 				ContactPersonName = t.ContactPersonName,
 				ContactPersonPhone = t.ContactPersonPhone,
 				ContactPersonEmail = t.ContactPersonEmail,
 				MonthlyAidat = t.MonthlyAidat,
-				ContractStartDate = t.ContractStartDate,
-				ContractEndDate = t.ContractEndDate,
 				IsActive = t.IsActive,
 				CreatedAt = t.CreatedAt,
 				UpdatedAt = t.UpdatedAt,
 
-				// Kiracıya bağlı üniteler (yeni alanlar)
+				TotalBalance = _context.UtilityDebts
+					.Where(d => d.TenantId == t.Id && !d.IsDeleted && d.Status != Domain.Entities.DebtStatus.Paid)
+					.Sum(d => d.RemainingAmount) -
+							   _context.AdvanceAccounts
+					.Where(a => a.TenantId == t.Id && !a.IsDeleted && a.IsActive)
+					.Sum(a => a.Balance),
+
+				AdvanceBalance = _context.AdvanceAccounts
+					.Where(a => a.TenantId == t.Id && !a.IsDeleted && a.IsActive)
+					.Sum(a => a.Balance),
+
 				Flats = _context.Flats
 					.Where(f => f.TenantId == t.Id && !f.IsDeleted)
 					.OrderByDescending(f => f.FloorNumber ?? int.MinValue)

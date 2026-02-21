@@ -15,15 +15,18 @@ public record GetPaymentsQuery : IRequest<Result<List<PaymentDto>>>
     public Guid? TenantId { get; init; }
     public DateTime? StartDate { get; init; }
     public DateTime? EndDate { get; init; }
+    public DebtType? UtilityType { get; init; }
 }
 
 public class GetPaymentsQueryHandler : IRequestHandler<GetPaymentsQuery, Result<List<PaymentDto>>>
 {
     private readonly IApplicationDbContext _context;
+    private readonly ICurrentUserService _currentUserService;
 
-    public GetPaymentsQueryHandler(IApplicationDbContext context)
+    public GetPaymentsQueryHandler(IApplicationDbContext context, ICurrentUserService currentUserService)
     {
         _context = context;
+        _currentUserService = currentUserService;
     }
 
     public async Task<Result<List<PaymentDto>>> Handle(GetPaymentsQuery request, CancellationToken cancellationToken)
@@ -31,6 +34,30 @@ public class GetPaymentsQueryHandler : IRequestHandler<GetPaymentsQuery, Result<
         var query = _context.Payments
             .Where(p => !p.IsDeleted)
             .AsQueryable();
+
+        // Veri İzolasyonu (RBAC)
+        if (!_currentUserService.IsAdmin && !_currentUserService.IsManager)
+        {
+            if (_currentUserService.TenantId.HasValue)
+            {
+                query = query.Where(p => p.TenantId == _currentUserService.TenantId.Value);
+            }
+            else if (_currentUserService.OwnerId.HasValue)
+            {
+                query = query.Where(p => p.OwnerId == _currentUserService.OwnerId.Value);
+            }
+            else
+            {
+                // Eğer rolü var ama bağlı olduğu bir ID yoksa (ve admin değilse), veri görmemeli
+                return Result<List<PaymentDto>>.Success(new List<PaymentDto>());
+            }
+        }
+
+        if (request.UtilityType.HasValue)
+        {
+            query = query.Where(p => _context.PaymentDebts
+                .Any(pd => pd.PaymentId == p.Id && pd.Debt.Type == request.UtilityType.Value));
+        }
 
         if (request.Type.HasValue)
             query = query.Where(p => p.Type == request.Type.Value);

@@ -14,15 +14,9 @@ public class CreateTenantCommandValidator : AbstractValidator<CreateTenantComman
             .NotEmpty().WithMessage("İş türü gereklidir.")
             .MaximumLength(100).WithMessage("İş türü 100 karakterden uzun olamaz.");
 
-        RuleFor(x => x.CompanyType)
-            .NotEmpty().WithMessage("Firma türü gereklidir.")
-            .Must(ct => ct == "Individual" || ct == "Corporate")
-            .WithMessage("Firma türü 'Individual' veya 'Corporate' olmalıdır.");
-
         RuleFor(x => x.IdentityNumber)
             .NotEmpty().WithMessage("Kimlik/vergi numarası gereklidir.")
-            .Must((command, identityNumber) => ValidateIdentityNumber(command.CompanyType, identityNumber))
-            .WithMessage("Kimlik/vergi numarası formatı geçersiz.");
+            .MaximumLength(20).WithMessage("Kimlik/vergi numarası 20 karakterden uzun olamaz.");
 
         RuleFor(x => x.ContactPersonName)
             .NotEmpty().WithMessage("İletişim kişisi adı gereklidir.")
@@ -52,27 +46,5 @@ public class CreateTenantCommandValidator : AbstractValidator<CreateTenantComman
 
         RuleFor(x => x.MonthlyAidat)
             .GreaterThanOrEqualTo(0).WithMessage("Aylık aidat negatif olamaz.");
-
-        RuleFor(x => x.ContractStartDate)
-            .LessThanOrEqualTo(x => x.ContractEndDate).When(x => x.ContractStartDate.HasValue && x.ContractEndDate.HasValue)
-            .WithMessage("Giriş tarihi, çıkış tarihinden önce olmalıdır.");
     }
-
-    private static bool ValidateIdentityNumber(string companyType, string identityNumber)
-    {
-        if (string.IsNullOrEmpty(identityNumber))
-            return false;
-
-        // Sadece rakam kontrolü
-        if (!identityNumber.All(char.IsDigit))
-            return false;
-
-        // Firma türüne göre uzunluk kontrolü
-        return companyType switch
-        {
-            "Individual" => identityNumber.Length == 11, // TC Kimlik No
-            "Corporate" => identityNumber.Length == 10,  // Vergi No
-            _ => false
-        };
-    }
-} 
+}

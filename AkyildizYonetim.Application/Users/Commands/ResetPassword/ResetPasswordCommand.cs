@@ -24,16 +24,22 @@ public class ResetPasswordCommandHandler : IRequestHandler<ResetPasswordCommand,
 
     public async Task<Result> Handle(ResetPasswordCommand request, CancellationToken cancellationToken)
     {
-        var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == request.Email && !u.IsDeleted, cancellationToken);
-        if (user == null)
-            return Result.Failure("Kullanıcı bulunamadı.");
+        var user = await _context.Users.FirstOrDefaultAsync(u => 
+            u.Email == request.Email && 
+            u.PasswordResetToken == request.Token &&
+            !u.IsDeleted, cancellationToken);
 
-        // Token kontrolü (örnek, gerçek uygulamada token ayrı tabloda tutulmalı)
-        // Burada token kontrolü atlanıyor, gerçek uygulamada eklenmeli!
+        if (user == null)
+            return Result.Failure("Geçersiz e-posta veya token.");
+
+        if (user.ResetTokenExpires < DateTime.UtcNow)
+            return Result.Failure("Şifre sıfırlama bağlantısının süresi dolmuş.");
 
         user.PasswordHash = HashPassword(request.NewPassword);
-        // user.RequiresPasswordReset = false;
+        user.PasswordResetToken = null;
+        user.ResetTokenExpires = null;
         user.UpdatedAt = DateTime.UtcNow;
+
         await _context.SaveChangesAsync(cancellationToken);
         return Result.Success();
     }

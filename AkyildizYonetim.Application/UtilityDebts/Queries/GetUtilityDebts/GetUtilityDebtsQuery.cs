@@ -15,15 +15,58 @@ public record GetUtilityDebtsQuery : IRequest<Result<List<UtilityDebtDto>>>
     public DebtStatus? Status { get; init; }
     public Guid? TenantId { get; init; }
     public Guid? OwnerId { get; init; }
+    public DateTime? StartDate { get; init; }
+    public DateTime? EndDate { get; init; }
 }
 
 public class GetUtilityDebtsQueryHandler : IRequestHandler<GetUtilityDebtsQuery, Result<List<UtilityDebtDto>>>
 {
     private readonly IApplicationDbContext _context;
-    public GetUtilityDebtsQueryHandler(IApplicationDbContext context) { _context = context; }
+    private readonly ICurrentUserService _currentUserService;
+
+    public GetUtilityDebtsQueryHandler(IApplicationDbContext context, ICurrentUserService currentUserService)
+    {
+        _context = context;
+        _currentUserService = currentUserService;
+    }
+
     public async Task<Result<List<UtilityDebtDto>>> Handle(GetUtilityDebtsQuery request, CancellationToken cancellationToken)
     {
-        var query = _context.UtilityDebts.Where(d => !d.IsDeleted).AsQueryable();
+        var query = _context.UtilityDebts
+            .Include(d => d.Tenant)
+            .Include(d => d.Flat)
+            .Include(d => d.Owner)
+            .IgnoreQueryFilters()
+            .Where(d => !d.IsDeleted)
+            .AsQueryable();
+
+        // Veri İzolasyonu (RBAC)
+        if (!_currentUserService.IsAdmin && !_currentUserService.IsManager)
+        {
+            if (_currentUserService.TenantId.HasValue)
+            {
+                query = query.Where(d => d.TenantId == _currentUserService.TenantId.Value);
+            }
+            else if (_currentUserService.OwnerId.HasValue)
+            {
+                query = query.Where(d => d.OwnerId == _currentUserService.OwnerId.Value);
+            }
+            else
+            {
+                return Result<List<UtilityDebtDto>>.Success(new List<UtilityDebtDto>());
+            }
+        }
+
+        if (request.StartDate.HasValue)
+        {
+            query = query.Where(d => d.CreatedAt >= request.StartDate.Value);
+        }
+
+        if (request.EndDate.HasValue)
+        {
+            query = query.Where(d => d.CreatedAt <= request.EndDate.Value);
+        }
+
         if (request.FlatId.HasValue)
             query = query.Where(d => d.FlatId == request.FlatId.Value);
         if (request.Type.HasValue)
@@ -54,7 +97,12 @@ public class GetUtilityDebtsQueryHandler : IRequestHandler<GetUtilityDebtsQuery,
                 TenantId = d.TenantId,
                 OwnerId = d.OwnerId,
                 CreatedAt = d.CreatedAt,
-                UpdatedAt = d.UpdatedAt
+                UpdatedAt = d.UpdatedAt,
+                RemainingAmount = d.RemainingAmount,
+                DueDate = d.DueDate,
+                TenantName = d.Tenant != null ? (!string.IsNullOrEmpty(d.Tenant.CompanyName) ? d.Tenant.CompanyName : d.Tenant.ContactPersonName) 
+                             : (d.Owner != null ? $"{d.Owner.FirstName} {d.Owner.LastName}".Trim() : (d.Description ?? "Bilinmiyor")),
+                FlatInfo = d.Flat != null ? $"Daire {d.Flat.Number}" : null
             })
             .ToListAsync(cancellationToken);
         return Result<List<UtilityDebtDto>>.Success(debts);
@@ -72,9 +120,13 @@ public class UtilityDebtDto
     public DebtStatus Status { get; set; }
     public decimal? PaidAmount { get; set; }
     public DateTime? PaidDate { get; set; }
+    public decimal RemainingAmount { get; set; }
+    public DateTime DueDate { get; set; }
     public string? Description { get; set; }
     public Guid? TenantId { get; set; }
     public Guid? OwnerId { get; set; }
+    public string? TenantName { get; set; }
+    public string? FlatInfo { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
 } 

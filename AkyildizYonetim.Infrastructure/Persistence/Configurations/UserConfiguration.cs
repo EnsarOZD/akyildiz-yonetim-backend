@@ -39,6 +39,11 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
             
         builder.Property(u => u.UpdatedAt);
         
+        builder.Property(u => u.PasswordResetToken)
+            .HasMaxLength(100);
+            
+        builder.Property(u => u.ResetTokenExpires);
+        
         // Indexes
         builder.HasIndex(u => u.Email)
        .IsUnique()

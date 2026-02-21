@@ -11,7 +11,7 @@ using static AkyildizYonetim.Domain.Entities.Enums.FlatEnums; // UnitType için
 namespace AkyildizYonetim.API.Controllers;
 
 [ApiController]
-[Route("[controller]")]
+[Route("api/[controller]")]
 public class FlatsController : ControllerBase
 {
 	private readonly IMediator _mediator;

@@ -2,6 +2,7 @@ using AkyildizYonetim.Application.Common.Interfaces;
 using AkyildizYonetim.Application.Common.Models;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using AkyildizYonetim.Application.DTOs;
 
 namespace AkyildizYonetim.Application.Owners.Queries.GetOwnerById;
 
@@ -34,7 +35,15 @@ public class GetOwnerByIdQueryHandler : IRequestHandler<GetOwnerByIdQuery, Resul
                 MonthlyDues = o.MonthlyDues,
                 IsActive = o.IsActive,
                 CreatedAt = o.CreatedAt,
-                UpdatedAt = o.UpdatedAt
+                UpdatedAt = o.UpdatedAt,
+                Flats = _context.Flats
+                    .Where(f => f.OwnerId == o.Id && !f.IsDeleted)
+                    .Select(f => new FlatSummaryDto
+                    {
+                        Id = f.Id,
+                        Code = f.Code
+                    })
+                    .ToList()
             })
             .FirstOrDefaultAsync(cancellationToken);
 
@@ -46,17 +55,3 @@ public class GetOwnerByIdQueryHandler : IRequestHandler<GetOwnerByIdQuery, Resul
         return Result<OwnerDto>.Success(owner);
     }
 }
-
-public class OwnerDto
-{
-    public Guid Id { get; set; }
-    public string FirstName { get; set; } = string.Empty;
-    public string LastName { get; set; } = string.Empty;
-    public string PhoneNumber { get; set; } = string.Empty;
-    public string Email { get; set; } = string.Empty;
-    public string ApartmentNumber { get; set; } = string.Empty;
-    public decimal MonthlyDues { get; set; }
-    public bool IsActive { get; set; }
-    public DateTime CreatedAt { get; set; }
-    public DateTime? UpdatedAt { get; set; }
-} 

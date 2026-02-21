@@ -2,10 +2,14 @@ using AkyildizYonetim.Application.Common.Interfaces;
 using AkyildizYonetim.Application.Common.Models;
 using AkyildizYonetim.Domain.Entities;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 using System.Security.Cryptography;
 using System.Text;
 using System.Net.Mail;
 using System.Net;
+
+using Microsoft.Extensions.Options;
+using AkyildizYonetim.Application.Common.Models;
 
 namespace AkyildizYonetim.Application.Users.Commands.CreateUser;
 
@@ -23,18 +27,32 @@ public class CreateUserCommandHandler : IRequestHandler<CreateUserCommand, Resul
 {
     private readonly IApplicationDbContext _context;
     private readonly IEmailSender _emailSender;
-    public CreateUserCommandHandler(IApplicationDbContext context, IEmailSender emailSender)
+    private readonly ClientSettings _clientSettings;
+
+    public CreateUserCommandHandler(
+        IApplicationDbContext context, 
+        IEmailSender emailSender,
+        IOptions<ClientSettings> clientSettings)
     {
         _context = context;
         _emailSender = emailSender;
+        _clientSettings = clientSettings.Value;
     }
 
     public async Task<Result<Guid>> Handle(CreateUserCommand request, CancellationToken cancellationToken)
     {
-        // Geçici şifre üret
-        var tempPassword = GenerateTemporaryPassword(12);
-        var passwordHash = HashPassword(tempPassword);
+        // E-posta benzersizliği kontrolü
+        var existingUser = await _context.Users
+            .AnyAsync(u => u.Email == request.Email && !u.IsDeleted, cancellationToken);
 
+        if (existingUser)
+        {
+            return Result<Guid>.Failure("Bu e-posta adresi zaten kullanımda.");
+        }
+
+        // Şifre sıfırlama token'ı oluştur
+        var resetToken = Guid.NewGuid().ToString("N");
+        
         var user = new User
         {
             Id = Guid.NewGuid(),
@@ -44,22 +62,29 @@ public class CreateUserCommandHandler : IRequestHandler<CreateUserCommand, Resul
             Role = request.Role,
             OwnerId = request.OwnerId,
             TenantId = request.TenantId,
-            PasswordHash = passwordHash,
+            PasswordHash = string.Empty, // Şifre henüz yok
+            PasswordResetToken = resetToken,
+            ResetTokenExpires = DateTime.UtcNow.AddDays(3),
             IsActive = true,
             CreatedAt = DateTime.UtcNow,
-            // İlk girişte şifre değiştirme zorunlu
-            // RequiresPasswordReset = true,
         };
         _context.Users.Add(user);
         await _context.SaveChangesAsync(cancellationToken);
 
-        // Şifre sıfırlama linki oluştur (örnek token)
-        var resetToken = Guid.NewGuid().ToString();
-        // Burada gerçek bir token üretimi ve saklanması gerekir (ör: ayrı bir tabloya kaydedilebilir)
-        var resetLink = $"https://your-app-url.com/reset-password?email={user.Email}&token={resetToken}";
+        // Şifre belirleme linki (Frontend URL)
+        var resetLink = $"{_clientSettings.ClientUrl}/set-password?token={resetToken}&email={user.Email}";
 
         // E-posta gönder
-        await _emailSender.SendEmailAsync(user.Email, "Hesabınız Oluşturuldu - Şifre Belirleme", $"<p>Sayın {user.FirstName} {user.LastName},</p><p>Hesabınız oluşturuldu. İlk giriş için geçici şifreniz: <b>{tempPassword}</b></p><p>Şifrenizi belirlemek için <a href='{resetLink}'>buraya tıklayın</a>.</p>");
+        await _emailSender.SendEmailAsync(
+            user.Email, 
+            "Hesabınız Oluşturuldu - Şifre Belirleme", 
+            $"<p>Sayın {user.FirstName} {user.LastName},</p>" +
+            $"<p>Akyıldız Yönetim sisteminde hesabınız başarıyla oluşturuldu.</p>" +
+            $"<p>Giriş yapabilmek için lütfen aşağıdaki bağlantıya tıklayarak şifrenizi belirleyin:</p>" +
+            $"<p><a href='{resetLink}' style='padding: 10px 20px; background-color: #4F46E5; color: white; text-decoration: none; border-radius: 5px;'>Şifremi Belirle</a></p>" +
+            $"<p>Bu bağlantı 3 gün boyunca geçerlidir.</p>" +
+            $"<p>Eğer butona tıklayamıyorsanız şu bağlantıyı tarayıcınıza yapıştırabilirsiniz:<br>{resetLink}</p>"
+        );
 
         return Result<Guid>.Success(user.Id);
     }

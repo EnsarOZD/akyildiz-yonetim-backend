@@ -12,7 +12,7 @@ public record DeleteUtilityDebtCommand : IRequest<Result>
 
 public class DeleteUtilityDebtCommandHandler : IRequestHandler<DeleteUtilityDebtCommand, Result>
 {
-    private readonly IApplicationDbContext _context;
+    private readonly IApplicationDbContext _context;    
     public DeleteUtilityDebtCommandHandler(IApplicationDbContext context) { _context = context; }
     public async Task<Result> Handle(DeleteUtilityDebtCommand request, CancellationToken cancellationToken)
     {

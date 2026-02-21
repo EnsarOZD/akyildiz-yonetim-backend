@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace AkyildizYonetim.API.Controllers;
 
 [ApiController]
-[Route("aidat-definitions")]
+[Route("api/aidat-definitions")]
 public class AidatDefinitionsController : ControllerBase
 {
     private readonly IMediator _mediator;

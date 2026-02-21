@@ -12,7 +12,6 @@ public record UpdateTenantCommand : IRequest<Result>
     // İş Yeri Bilgileri
     public string CompanyName { get; init; } = string.Empty;
     public string BusinessType { get; init; } = string.Empty;
-    public string CompanyType { get; init; } = string.Empty;
     public string IdentityNumber { get; init; } = string.Empty;
     
     // İletişim Kişisi Bilgileri
@@ -22,10 +21,6 @@ public record UpdateTenantCommand : IRequest<Result>
     
     // Aidat ve Borç Yönetimi
     public decimal MonthlyAidat { get; init; }
-    
-    // Sözleşme Bilgileri (Opsiyonel)
-    public DateTime? ContractStartDate { get; init; }
-    public DateTime? ContractEndDate { get; init; }
     
     public bool IsActive { get; init; }
 }
@@ -47,18 +42,15 @@ public class UpdateTenantCommandHandler : IRequestHandler<UpdateTenantCommand, R
         
         tenant.CompanyName = request.CompanyName;
         tenant.BusinessType = request.BusinessType;
-        tenant.CompanyType = request.CompanyType;
         tenant.IdentityNumber = request.IdentityNumber;
         tenant.ContactPersonName = request.ContactPersonName;
         tenant.ContactPersonPhone = request.ContactPersonPhone;
         tenant.ContactPersonEmail = request.ContactPersonEmail;
         tenant.MonthlyAidat = request.MonthlyAidat;
-        tenant.ContractStartDate = request.ContractStartDate;
-        tenant.ContractEndDate = request.ContractEndDate;
         tenant.IsActive = request.IsActive;
         tenant.UpdatedAt = DateTime.UtcNow;
         
         await _context.SaveChangesAsync(cancellationToken);
         return Result.Success();
     }
-} 
+}

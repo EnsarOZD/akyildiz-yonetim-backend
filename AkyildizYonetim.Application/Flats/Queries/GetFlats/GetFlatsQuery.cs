@@ -26,12 +26,14 @@ namespace AkyildizYonetim.Application.Flats.Queries.GetFlats
         private readonly IApplicationDbContext _ctx;
         private readonly IMapper _mapper;
         private readonly IFlatShareCalculator _share;
+        private readonly ICurrentUserService _currentUserService;
 
-        public GetFlatsQueryHandler(IApplicationDbContext ctx, IMapper mapper, IFlatShareCalculator share)
+        public GetFlatsQueryHandler(IApplicationDbContext ctx, IMapper mapper, IFlatShareCalculator share, ICurrentUserService currentUserService)
         {
             _ctx = ctx;
             _mapper = mapper;
             _share = share;
+            _currentUserService = currentUserService;
         }
 
         public async Task<Result<List<FlatSummaryDto>>> Handle(GetFlatsQuery rq, CancellationToken ct)
@@ -39,6 +41,23 @@ namespace AkyildizYonetim.Application.Flats.Queries.GetFlats
     var q = _ctx.Flats.AsNoTracking()
         .Include(f => f.Owner).Include(f => f.Tenant)
         .Where(f => !f.IsDeleted);
+
+    // Veri İzolasyonu (RBAC)
+    if (!_currentUserService.IsAdmin && !_currentUserService.IsManager)
+    {
+        if (_currentUserService.TenantId.HasValue)
+        {
+            q = q.Where(f => f.TenantId == _currentUserService.TenantId.Value);
+        }
+        else if (_currentUserService.OwnerId.HasValue)
+        {
+            q = q.Where(f => f.OwnerId == _currentUserService.OwnerId.Value);
+        }
+        else
+        {
+            return Result<List<FlatSummaryDto>>.Success(new List<FlatSummaryDto>());
+        }
+    }
 
     if (rq.OwnerId.HasValue)     q = q.Where(f => f.OwnerId == rq.OwnerId);
     if (rq.TenantId.HasValue)     q = q.Where(f => f.TenantId == rq.TenantId);

@@ -31,7 +31,7 @@ public class OwnerConfiguration : IEntityTypeConfiguration<Owner>
             .HasMaxLength(50);
             
         builder.Property(o => o.MonthlyDues)
-            .HasColumnType("decimal(18,2)")
+            .HasPrecision(18, 2)
             .IsRequired();
             
         builder.Property(o => o.IsActive)
@@ -47,8 +47,14 @@ public class OwnerConfiguration : IEntityTypeConfiguration<Owner>
         builder.Property(o => o.UpdatedAt);
         
         // Indexes
-        builder.HasIndex(o => o.Email).IsUnique();
-        builder.HasIndex(o => o.ApartmentNumber).IsUnique();
+        builder.HasIndex(o => o.Email)
+            .IsUnique()
+            .HasFilter("[IsDeleted] = 0");
+            
+        builder.HasIndex(o => o.ApartmentNumber)
+            .IsUnique()
+            .HasFilter("[IsDeleted] = 0");
+            
         builder.HasIndex(o => o.PhoneNumber);
     }
 } 

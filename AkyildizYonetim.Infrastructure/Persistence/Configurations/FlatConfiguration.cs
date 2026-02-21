@@ -58,7 +58,6 @@ public class FlatConfiguration : IEntityTypeConfiguration<Flat>
             .IsRequired()
             .HasMaxLength(50);
 
-        // DİKKAT: Eskiden Floor vardı; artık FloorNumber kullanıyoruz.
         builder.HasIndex(f => f.FloorNumber);
 
         builder.Property(f => f.UnitArea)
@@ -68,9 +67,6 @@ public class FlatConfiguration : IEntityTypeConfiguration<Flat>
         builder.Property(f => f.IsActive)
             .IsRequired();
 
-        builder.Property(f => f.ShareCount)
-            .IsRequired()
-            .HasDefaultValue(1);
 
         // İş Hanı özel alanları
         builder.Property(f => f.MonthlyRent)

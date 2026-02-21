@@ -11,14 +11,11 @@ public interface IApplicationDbContext
     DbSet<Expense> Expenses { get; }
     DbSet<Flat> Flats { get; }
     DbSet<User> Users { get; }
-    DbSet<UtilityDebt> UtilityDebts { get; set; }
+    DbSet<UtilityDebt> UtilityDebts { get; }
     DbSet<AdvanceAccount> AdvanceAccounts { get; }
     DbSet<AidatDefinition> AidatDefinitions { get; }
-    DbSet<MeterReading> MeterReadings { get; }
-    DbSet<UtilityBill> UtilityBills { get; }
     DbSet<PaymentDebt> PaymentDebts { get; }
     DbSet<AuditLog> AuditLogs { get; }
-    DbSet<UtilityPricingConfiguration> UtilityPricingConfigurations { get; }
     
     Microsoft.EntityFrameworkCore.Infrastructure.DatabaseFacade Database { get; }
     Task<int> SaveChangesAsync(CancellationToken cancellationToken);

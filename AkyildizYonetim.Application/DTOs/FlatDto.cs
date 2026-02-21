@@ -50,6 +50,8 @@ public class FlatSummaryDto
 	public bool IsActive { get; set; }
 	public decimal UnitArea { get; set; }
 	public decimal? EffectiveShare { get; set; }
+	public Guid? OwnerId { get; set; }
+	public Guid? TenantId { get; set; }
 	public string OwnerName { get; set; } = string.Empty;
 	public string? TenantCompanyName { get; set; }
 }

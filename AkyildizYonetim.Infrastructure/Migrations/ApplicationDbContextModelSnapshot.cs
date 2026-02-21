@@ -318,11 +318,6 @@ namespace AkyildizYonetim.Infrastructure.Migrations
                         .HasMaxLength(4)
                         .HasColumnType("nvarchar(4)");
 
-                    b.Property<int>("ShareCount")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasDefaultValue(1);
-
                     b.Property<Guid?>("TenantId")
                         .HasColumnType("uniqueidentifier");
 
@@ -375,61 +370,6 @@ namespace AkyildizYonetim.Infrastructure.Migrations
                     b.ToTable("Flats", (string)null);
                 });
 
-            modelBuilder.Entity("AkyildizYonetim.Domain.Entities.MeterReading", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<decimal>("Consumption")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<Guid>("FlatId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<bool>("IsDeleted")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(false);
-
-                    b.Property<string>("Note")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<int>("PeriodMonth")
-                        .HasColumnType("int");
-
-                    b.Property<int>("PeriodYear")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("ReadingDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<decimal>("ReadingValue")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<int>("Type")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("FlatId");
-
-                    b.HasIndex("ReadingDate");
-
-                    b.HasIndex("Type");
-
-                    b.ToTable("MeterReadings");
-                });
-
             modelBuilder.Entity("AkyildizYonetim.Domain.Entities.Owner", b =>
                 {
                     b.Property<Guid>("Id")
@@ -468,6 +408,7 @@ namespace AkyildizYonetim.Infrastructure.Migrations
                         .HasColumnType("nvarchar(100)");
 
                     b.Property<decimal>("MonthlyDues")
+                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<string>("PhoneNumber")
@@ -481,10 +422,12 @@ namespace AkyildizYonetim.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("ApartmentNumber")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("[IsDeleted] = 0");
 
                     b.HasIndex("Email")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("[IsDeleted] = 0");
 
                     b.HasIndex("PhoneNumber");
 
@@ -626,11 +569,6 @@ namespace AkyildizYonetim.Infrastructure.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
-                    b.Property<string>("CompanyType")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
                     b.Property<string>("ContactPersonEmail")
                         .IsRequired()
                         .HasMaxLength(255)
@@ -646,12 +584,6 @@ namespace AkyildizYonetim.Infrastructure.Migrations
                         .HasMaxLength(20)
                         .IsUnicode(false)
                         .HasColumnType("varchar(20)");
-
-                    b.Property<DateTime?>("ContractEndDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("ContractStartDate")
-                        .HasColumnType("datetime2");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -735,6 +667,13 @@ namespace AkyildizYonetim.Infrastructure.Migrations
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
 
+                    b.Property<string>("PasswordResetToken")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime?>("ResetTokenExpires")
+                        .HasColumnType("datetime2");
+
                     b.Property<int>("Role")
                         .HasColumnType("int");
 
@@ -759,56 +698,6 @@ namespace AkyildizYonetim.Infrastructure.Migrations
                     b.HasIndex("TenantId");
 
                     b.ToTable("Users");
-                });
-
-            modelBuilder.Entity("AkyildizYonetim.Domain.Entities.UtilityBill", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime>("BillDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Description")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<bool>("IsDeleted")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(false);
-
-                    b.Property<int>("PeriodMonth")
-                        .HasColumnType("int");
-
-                    b.Property<int>("PeriodYear")
-                        .HasColumnType("int");
-
-                    b.Property<decimal>("TotalAmount")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<int>("Type")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("BillDate");
-
-                    b.HasIndex("PeriodMonth");
-
-                    b.HasIndex("PeriodYear");
-
-                    b.HasIndex("Type");
-
-                    b.ToTable("UtilityBills");
                 });
 
             modelBuilder.Entity("AkyildizYonetim.Domain.Entities.UtilityDebt", b =>
@@ -889,74 +778,6 @@ namespace AkyildizYonetim.Infrastructure.Migrations
                     b.ToTable("UtilityDebts");
                 });
 
-            modelBuilder.Entity("AkyildizYonetim.Domain.Entities.UtilityPricingConfiguration", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<decimal>("BtvRate")
-                        .HasPrecision(5, 2)
-                        .HasColumnType("decimal(5,2)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Description")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<DateTime>("EffectiveDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("ExpiryDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<bool>("IsActive")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(true);
-
-                    b.Property<bool>("IsDeleted")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(false);
-
-                    b.Property<int>("MeterType")
-                        .HasColumnType("int");
-
-                    b.Property<int>("Month")
-                        .HasColumnType("int");
-
-                    b.Property<decimal>("UnitPrice")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("decimal(18,4)");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<decimal>("VatRate")
-                        .HasPrecision(5, 2)
-                        .HasColumnType("decimal(5,2)");
-
-                    b.Property<int>("Year")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("IsActive")
-                        .HasDatabaseName("IX_UtilityPricing_IsActive");
-
-                    b.HasIndex("EffectiveDate", "ExpiryDate")
-                        .HasDatabaseName("IX_UtilityPricing_EffectiveDate");
-
-                    b.HasIndex("MeterType", "Year", "Month")
-                        .HasDatabaseName("IX_UtilityPricing_Type_Year_Month");
-
-                    b.ToTable("UtilityPricingConfigurations");
-                });
-
             modelBuilder.Entity("AkyildizYonetim.Domain.Entities.AdvanceAccount", b =>
                 {
                     b.HasOne("AkyildizYonetim.Domain.Entities.Tenant", "Tenant")
@@ -1003,17 +824,6 @@ namespace AkyildizYonetim.Infrastructure.Migrations
                     b.Navigation("Owner");
 
                     b.Navigation("Tenant");
-                });
-
-            modelBuilder.Entity("AkyildizYonetim.Domain.Entities.MeterReading", b =>
-                {
-                    b.HasOne("AkyildizYonetim.Domain.Entities.Flat", "Flat")
-                        .WithMany()
-                        .HasForeignKey("FlatId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Flat");
                 });
 
             modelBuilder.Entity("AkyildizYonetim.Domain.Entities.Payment", b =>

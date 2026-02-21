@@ -15,10 +15,12 @@ public record GetOwnersQuery : IRequest<Result<List<OwnerDto>>>
 public class GetOwnersQueryHandler : IRequestHandler<GetOwnersQuery, Result<List<OwnerDto>>>
 {
     private readonly IApplicationDbContext _context;
+    private readonly ICurrentUserService _currentUserService;
 
-    public GetOwnersQueryHandler(IApplicationDbContext context)
+    public GetOwnersQueryHandler(IApplicationDbContext context, ICurrentUserService currentUserService)
     {
         _context = context;
+        _currentUserService = currentUserService;
     }
 
     public async Task<Result<List<OwnerDto>>> Handle(GetOwnersQuery request, CancellationToken cancellationToken)
@@ -26,6 +28,26 @@ public class GetOwnersQueryHandler : IRequestHandler<GetOwnersQuery, Result<List
         var query = _context.Owners
             .Where(o => !o.IsDeleted)
             .AsQueryable();
+
+        // Veri İzolasyonu (RBAC)
+        if (!_currentUserService.IsAdmin && !_currentUserService.IsManager)
+        {
+            if (_currentUserService.OwnerId.HasValue)
+            {
+                query = query.Where(o => o.Id == _currentUserService.OwnerId.Value);
+            }
+            else if (_currentUserService.TenantId.HasValue)
+            {
+                // Kiracı, kendi dairesinin mal sahibini görebilir mi?
+                // Genellikle evet, ama kısıtlamak gerekebilir. 
+                // Şimdilik sadece kendi mal sahibini görmesini sağlayalım.
+                query = query.Where(o => _context.Flats.Any(f => f.TenantId == _currentUserService.TenantId.Value && f.OwnerId == o.Id));
+            }
+            else
+            {
+                return Result<List<OwnerDto>>.Success(new List<OwnerDto>());
+            }
+        }
 
         if (request.IsActive.HasValue)
         {
@@ -60,7 +82,11 @@ public class GetOwnersQueryHandler : IRequestHandler<GetOwnersQuery, Result<List
                 UpdatedAt = o.UpdatedAt,
                 Flats = _context.Flats
                     .Where(f => f.OwnerId == o.Id && !f.IsDeleted)
-                    .Select(f => f.Id)
+                    .Select(f => new FlatSummaryDto
+                    {
+                        Id = f.Id,
+                        Code = f.Code
+                    })
                     .ToList()
             })
             .ToListAsync(cancellationToken);

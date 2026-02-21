@@ -11,7 +11,7 @@ using Microsoft.Extensions.Logging;
 namespace AkyildizYonetim.API.Controllers;
 
 [ApiController]
-[Route("[controller]")]
+[Route("api/[controller]")]
 public class AdvanceAccountsController : ControllerBase
 {
     private readonly IMediator _mediator;

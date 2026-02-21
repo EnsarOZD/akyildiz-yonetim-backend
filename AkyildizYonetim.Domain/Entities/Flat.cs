@@ -34,7 +34,7 @@ public class Flat : BaseEntity
 
 	// Ortak paylaşımda “sabit” hisse tutma ihtiyacın kalmadı; dinamik hesaplayacağız.
 	// Geriye dönük kırmamak için bırakıyorum ama kullanmayacağız:
-	public int ShareCount { get; set; } = 1;
+	
 
 	// İş Hanı özel alanları
 	public decimal MonthlyRent { get; set; } = 0;

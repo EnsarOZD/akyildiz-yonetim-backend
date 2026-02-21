@@ -334,3 +334,6 @@ readingDate: "2024-09-23T14:36:45.000Z"
 
 Bu dokümantasyonu takip ederek bulk-upsert endpoint'i sorunsuz çalışacaktır.
 
+
+
+

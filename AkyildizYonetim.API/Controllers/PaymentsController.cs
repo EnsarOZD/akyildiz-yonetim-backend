@@ -6,16 +6,19 @@ using AkyildizYonetim.Application.Payments.Queries.GetPayments;
 using AkyildizYonetim.Application.DTOs;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Logging;
 using System;
 using System.ComponentModel.DataAnnotations;
 using AkyildizYonetim.Domain.Entities;
+using AkyildizYonetim.Application.Payments.Commands.CreatePayment;
 
 
 namespace AkyildizYonetim.API.Controllers;
 
+[Authorize]
 [ApiController]
-[Route("[controller]")]
+[Route("api/[controller]")]
 public class PaymentsController : ControllerBase
 {
     private readonly IMediator _mediator;
@@ -42,8 +45,8 @@ public class PaymentsController : ControllerBase
     public async Task<IActionResult> GetPayments(
         [FromQuery] PaymentType? type,
         [FromQuery] PaymentStatus? status,
-        [FromQuery] Guid? ownerId,
-        [FromQuery] Guid? tenantId,
+        [FromQuery] string? ownerId,
+        [FromQuery] string? tenantId,
         [FromQuery] DateTime? startDate,
         [FromQuery] DateTime? endDate)
     {
@@ -53,12 +56,18 @@ public class PaymentsController : ControllerBase
             logger?.LogInformation("GetPayments called with filters: Type={Type}, Status={Status}, OwnerId={OwnerId}, TenantId={TenantId}, StartDate={StartDate}, EndDate={EndDate}", 
                 type, status, ownerId, tenantId, startDate, endDate);
 
+            Guid? ownerGuid = null;
+            if (Guid.TryParse(ownerId, out var parsedOwnerId)) ownerGuid = parsedOwnerId;
+
+            Guid? tenantGuid = null;
+            if (Guid.TryParse(tenantId, out var parsedTenantId)) tenantGuid = parsedTenantId;
+
             var result = await _mediator.Send(new GetPaymentsQuery
             {
                 Type = type,
                 Status = status,
-                OwnerId = ownerId,
-                TenantId = tenantId,
+                OwnerId = ownerGuid,
+                TenantId = tenantGuid,
                 StartDate = startDate,
                 EndDate = endDate
             });
@@ -132,6 +141,7 @@ public class PaymentsController : ControllerBase
     /// </summary>
     /// <param name="request">Ödeme bilgileri</param>
     /// <returns>Oluşturulan ödeme</returns>
+    [Authorize(Roles = "Admin")]
     [HttpPost]
     [ProducesResponseType(typeof(PaymentDto), 201)]
     [ProducesResponseType(typeof(object), 400)]
@@ -193,6 +203,7 @@ public class PaymentsController : ControllerBase
         }
     }
 
+    [Authorize(Roles = "Admin")]
     [HttpPost("with-allocation")]
     public async Task<IActionResult> CreatePaymentWithAllocation([FromBody] CreatePaymentWithDebtAllocationCommand command)
     {
@@ -202,6 +213,7 @@ public class PaymentsController : ControllerBase
             : BadRequest(result.ErrorMessage ?? string.Join(", ", result.Errors));
     }
 
+    [Authorize(Roles = "Admin")]
     [HttpPut("{id}")]
     public async Task<IActionResult> UpdatePayment(Guid id, [FromBody] UpdatePaymentCommand command)
     {
@@ -217,6 +229,7 @@ public class PaymentsController : ControllerBase
     /// </summary>
     /// <param name="id">Ödeme ID</param>
     /// <returns>Silme işlemi sonucu</returns>
+    [Authorize(Roles = "Admin")]
     [HttpDelete("{id}")]
     [ProducesResponseType(204)]
     [ProducesResponseType(typeof(object), 404)]

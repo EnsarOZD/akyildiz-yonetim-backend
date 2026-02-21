@@ -59,15 +59,11 @@ public class TestBase
         {
             Id = Guid.NewGuid(),
             CompanyName = "Test Company",
-            CompanyType="Şahıs",
             BusinessType = "Ticaret",
             ContactPersonName = "Test Contact",
             ContactPersonPhone = "5551234567",
             ContactPersonEmail = "test@example.com",
             MonthlyAidat = 150,
-
-            ContractStartDate = DateTime.UtcNow.AddDays(-30),
-            ContractEndDate = DateTime.UtcNow.AddDays(335),
             IsActive = true,
             CreatedAt = DateTime.UtcNow
         };

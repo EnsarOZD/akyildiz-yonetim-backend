@@ -4,14 +4,17 @@ using AkyildizYonetim.Application.Tenants.Commands.UpdateTenant;
 using AkyildizYonetim.Application.Tenants.Queries.GetTenantById;
 using AkyildizYonetim.Application.Tenants.Queries.GetTenants;
 using AkyildizYonetim.Application.Tenants.Queries.GetTenantStats;
+using AkyildizYonetim.Application.Tenants.Queries.GetAvailableFlats;
 using AkyildizYonetim.Application.DTOs;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 
 namespace AkyildizYonetim.API.Controllers;
 
+[Authorize]
 [ApiController]
-[Route("[controller]")]
+[Route("api/[controller]")]
 public class TenantsController : ControllerBase
 {
 	private readonly IMediator _mediator;
@@ -22,7 +25,6 @@ public class TenantsController : ControllerBase
 	public async Task<IActionResult> GetTenants(
 		[FromQuery] bool? isActive,
 		[FromQuery] string? searchTerm,
-		[FromQuery] DateTime? period,
 		[FromQuery] bool? showOnlyOccupied,
 		[FromQuery(Name = "floor")] int? floorNumber) // geriye dönük: ?floor=
 	{
@@ -30,7 +32,6 @@ public class TenantsController : ControllerBase
 		{
 			IsActive = isActive,
 			SearchTerm = searchTerm,
-			Period = period,
 			ShowOnlyOccupied = showOnlyOccupied,
 			FloorNumber = floorNumber
 		});
@@ -43,7 +44,7 @@ public class TenantsController : ControllerBase
 	public async Task<IActionResult> GetTenantStats()
 	{
 		var result = await _mediator.Send(new GetTenantStatsQuery());
-		return result.IsSuccess ? Ok(result.Data) : BadRequest(result.ErrorMessage ?? string.Join(", ", result.Errors));
+		return result.IsSuccess ? Ok(result.Data) : BadRequest(result.ErrorMessage);
 	}
 
 	[HttpGet("{id:guid}")]
@@ -56,6 +57,7 @@ public class TenantsController : ControllerBase
 	}
 
 	// Body doğrudan CreateTenantCommand
+	[Authorize(Roles = "Admin")]
 	[HttpPost]
 	[ProducesResponseType(typeof(object), 201)]
 	[ProducesResponseType(typeof(object), 400)]
@@ -70,6 +72,7 @@ public class TenantsController : ControllerBase
 	}
 
 	// Body doğrudan UpdateTenantCommand
+	[Authorize(Roles = "Admin")]
 	[HttpPut("{id:guid}")]
 	[ProducesResponseType(204)]
 	[ProducesResponseType(typeof(object), 400)]
@@ -85,6 +88,7 @@ public class TenantsController : ControllerBase
 		return result.IsSuccess ? NoContent() : BadRequest(result.ErrorMessage ?? string.Join(", ", result.Errors));
 	}
 
+	[Authorize(Roles = "Admin")]
 	[HttpDelete("{id:guid}")]
 	[ProducesResponseType(204)]
 	[ProducesResponseType(typeof(object), 404)]
@@ -104,6 +108,4 @@ public class TenantsController : ControllerBase
 		var result = await _mediator.Send(new GetAvailableFlatsQuery { FloorNumber = floorNumber, SearchTerm = searchTerm });
 		return result.IsSuccess ? Ok(result.Data) : BadRequest(result.ErrorMessage ?? string.Join(", ", result.Errors));
 	}
-
-	// İsteğe bağlı: test endpoint'in varsa tutabilirsin.
 }

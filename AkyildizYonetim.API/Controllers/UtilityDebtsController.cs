@@ -1,4 +1,5 @@
 using AkyildizYonetim.Application.UtilityDebts.Commands.CreateUtilityDebt;
+using AkyildizYonetim.Application.UtilityDebts.Commands.CreateUtilityDebt.CreateAidatForPeriod;
 using AkyildizYonetim.Application.UtilityDebts.Commands.UpdateUtilityDebt;
 using AkyildizYonetim.Application.UtilityDebts.Commands.DeleteUtilityDebt;
 using AkyildizYonetim.Application.UtilityDebts.Queries.GetUtilityDebts;
@@ -8,11 +9,13 @@ using AkyildizYonetim.Infrastructure.Persistence;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authorization;
 
 namespace AkyildizYonetim.API.Controllers;
 
+[Authorize]
 [ApiController]
-[Route("[controller]")]
+[Route("api/[controller]")]
 public class UtilityDebtsController : ControllerBase
 {
     private readonly IMediator _mediator;
@@ -46,6 +49,7 @@ public class UtilityDebtsController : ControllerBase
         return Task.FromResult<IActionResult>(Ok(new List<object>()));
     }
 
+    [Authorize(Roles = "Admin")]
     [HttpPost]
     public async Task<IActionResult> CreateUtilityDebt([FromBody] CreateUtilityDebtCommand command)
     {
@@ -53,6 +57,15 @@ public class UtilityDebtsController : ControllerBase
         return result.IsSuccess ? Ok(result.Data) : BadRequest(result.ErrorMessage ?? string.Join(", ", result.Errors));
     }
 
+    [Authorize(Roles = "Admin")]
+    [HttpPost("bulk")]
+    public async Task<IActionResult> CreateBulkUtilityDebts([FromBody] CreateBulkUtilityDebtsCommand command)
+    {
+        var result = await _mediator.Send(command);
+        return result.IsSuccess ? Ok(result.Data) : BadRequest(result.ErrorMessage ?? string.Join(", ", result.Errors));
+    }
+
+    [Authorize(Roles = "Admin")]
     [HttpPut("{id}")]
     public async Task<IActionResult> UpdateUtilityDebt(Guid id, [FromBody] UpdateUtilityDebtCommand command)
     {
@@ -62,6 +75,7 @@ public class UtilityDebtsController : ControllerBase
         return result.IsSuccess ? NoContent() : BadRequest(result.ErrorMessage ?? string.Join(", ", result.Errors));
     }
 
+    [Authorize(Roles = "Admin")]
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteUtilityDebt(Guid id)
     {
@@ -69,6 +83,16 @@ public class UtilityDebtsController : ControllerBase
         return result.IsSuccess ? NoContent() : NotFound(result.ErrorMessage ?? string.Join(", ", result.Errors));
     }
 
+    [Authorize(Roles = "Admin")]
+    [HttpPatch("{id}")]
+    public async Task<IActionResult> PatchUtilityDebt(Guid id, [FromBody] AkyildizYonetim.Application.UtilityDebts.Commands.PatchUtilityDebt.PatchUtilityDebtCommand command)
+    {
+        var fixedCommand = command with { Id = id };
+        var result = await _mediator.Send(fixedCommand);
+        return result.IsSuccess ? NoContent() : BadRequest(result.ErrorMessage ?? string.Join(", ", result.Errors));
+    }
+
+    [Authorize(Roles = "Admin")]
     [HttpDelete("period/{period}")]
     public Task<IActionResult> DeleteByPeriod(string period)
     {
@@ -77,6 +101,7 @@ public class UtilityDebtsController : ControllerBase
         return Task.FromResult<IActionResult>(NoContent());
     }
 
+    [Authorize(Roles = "Admin")]
     [HttpPost("distribute")]
     public async Task<IActionResult> DistributeSharedExpense([FromBody] DistributeSharedExpenseRequest request)
     {
@@ -107,48 +132,45 @@ public class UtilityDebtsController : ControllerBase
                 return BadRequest("Bu dönem için ortak gider kaydı bulunamadı.");
             }
 
-            // Aktif kiracıları getir
-            var activeTenants = await _context.Tenants
-                .Where(t => t.IsActive && !t.IsDeleted)
+            // Aktif (dolu) üniteleri getir
+            var activeFlats = await _context.Flats
+                .Where(f => !f.IsDeleted && f.TenantId != null && f.IsOccupied)
+                .Include(f => f.Tenant)
                 .ToListAsync();
 
-            if (!activeTenants.Any())
+            if (!activeFlats.Any())
             {
-                return BadRequest("Aktif kiracı bulunamadı.");
+                return BadRequest("Dolu ünite (aktif kiracı) bulunamadı.");
             }
 
-            // Kiracı başına düşen tutarı hesapla
-            decimal amountPerTenant = sharedExpense.Amount / activeTenants.Count;
+            // Ünite başına düşen tutarı hesapla
+            decimal amountPerFlat = sharedExpense.Amount / activeFlats.Count;
 
-            // Her kiracı için borç kaydı oluştur
-            var createdDebts = new List<Guid>();
-            foreach (var tenant in activeTenants)
+            // Her ünite için borç kaydı oluştur
+            var createdDebtsCount = 0;
+            foreach (var flat in activeFlats)
             {
-                // Kiracının daire bilgisini bul
-                var flat = await _context.Flats
-                    .Where(f => f.TenantId == tenant.Id && !f.IsDeleted)
-                    .FirstOrDefaultAsync();
+                var defaultDueDate = new DateTime(periodDate.Year, periodDate.Month, 1).AddDays(9);
 
-                if (flat != null)
+                var debt = new UtilityDebt
                 {
-                    var debt = new UtilityDebt
-                    {
-                        Id = Guid.NewGuid(),
-                        FlatId = flat.Id,
-                        Type = utilityType,
-                        PeriodYear = periodDate.Year,
-                        PeriodMonth = periodDate.Month,
-                        Amount = amountPerTenant,
-                        Status = DebtStatus.Unpaid,
-                        Description = $"Ortak {request.UtilityType} Payı - {tenant.CompanyName}",
-                        TenantId = tenant.Id,
-                        OwnerId = flat.OwnerId,
-                        CreatedAt = DateTime.UtcNow
-                    };
+                    Id = Guid.NewGuid(),
+                    FlatId = flat.Id,
+                    Type = utilityType,
+                    PeriodYear = periodDate.Year,
+                    PeriodMonth = periodDate.Month,
+                    Amount = amountPerFlat,
+                    RemainingAmount = amountPerFlat,
+                    Status = DebtStatus.Unpaid,
+                    DueDate = defaultDueDate,
+                    Description = $"Ortak {request.UtilityType} Payı - {flat.Code} ({flat.Tenant?.CompanyName})",
+                    TenantId = flat.TenantId,
+                    OwnerId = flat.OwnerId,
+                    CreatedAt = DateTime.UtcNow
+                };
 
-                    _context.UtilityDebts.Add(debt);
-                    createdDebts.Add(debt.Id);
-                }
+                _context.UtilityDebts.Add(debt);
+                createdDebtsCount++;
             }
 
             await _context.SaveChangesAsync();
@@ -156,9 +178,9 @@ public class UtilityDebtsController : ControllerBase
             return Ok(new { 
                 message = "Ortak gider başarıyla paylaştırıldı", 
                 sharedExpenseAmount = sharedExpense.Amount,
-                tenantCount = activeTenants.Count,
-                amountPerTenant = amountPerTenant,
-                createdDebtsCount = createdDebts.Count
+                unitCount = activeFlats.Count,
+                amountPerFlat = amountPerFlat,
+                createdDebtsCount = createdDebtsCount
             });
         }
         catch (Exception ex)
@@ -167,12 +189,14 @@ public class UtilityDebtsController : ControllerBase
         }
     }
 
+    [Authorize(Roles = "Admin")]
     [HttpPost("create-aidat")]
-    public Task<IActionResult> CreateAidat([FromBody] CreateAidatRequest request)
+    public async Task<IActionResult> CreateAidat([FromBody] CreateAidatRequest request, CancellationToken ct)
     {
-        // Bu endpoint aidat oluşturma için kullanılacak
-        // Şimdilik başarılı döndürüyoruz, daha sonra implement edilecek
-        return Task.FromResult<IActionResult>(Ok(new { tenantDuesCreated = 0, ownerDuesCreated = 0 }));
+        var (tenantDuesCreated, ownerDuesCreated) =
+            await _mediator.Send(new CreateAidatForPeriodCommand(request.Period, request.DueDate), ct);
+
+        return Ok(new { tenantDuesCreated, ownerDuesCreated });
     }
 }
 
@@ -182,9 +206,10 @@ public class DistributeSharedExpenseRequest
     public string UtilityType { get; set; } = string.Empty;
 }
 
-public class CreateAidatRequest
+public sealed class CreateAidatRequest
 {
-    public string Period { get; set; } = string.Empty;
-    public string DueDate { get; set; } = string.Empty;
-    public int Year { get; set; }
-} 
+    // "YYYY-MM" (ör. 2025-03)
+    public string Period { get; set; } = default!;
+    // Son ödeme tarihi (zorunlu)
+    public DateTime DueDate { get; set; }
+}

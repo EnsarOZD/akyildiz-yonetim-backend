@@ -14,6 +14,10 @@ public record UpdateUtilityDebtCommand : IRequest<Result>
     public decimal? PaidAmount { get; init; }
     public DateTime? PaidDate { get; init; }
     public string? Description { get; init; }
+    public Guid? TenantId { get; init; }
+    public Guid? OwnerId { get; init; }
+    public int PeriodYear { get; init; }
+    public int PeriodMonth { get; init; }
 }
 
 public class UpdateUtilityDebtCommandHandler : IRequestHandler<UpdateUtilityDebtCommand, Result>
@@ -25,11 +29,20 @@ public class UpdateUtilityDebtCommandHandler : IRequestHandler<UpdateUtilityDebt
         var debt = await _context.UtilityDebts.FirstOrDefaultAsync(d => d.Id == request.Id && !d.IsDeleted, cancellationToken);
         if (debt == null)
             return Result.Failure("Borç kaydı bulunamadı.");
+            
         debt.Amount = request.Amount;
         debt.Status = request.Status;
         debt.PaidAmount = request.PaidAmount;
         debt.PaidDate = request.PaidDate;
         debt.Description = request.Description;
+        debt.TenantId = request.TenantId;
+        debt.OwnerId = request.OwnerId;
+        debt.PeriodYear = request.PeriodYear;
+        debt.PeriodMonth = request.PeriodMonth;
+        
+        // Kalan tutarı hesapla
+        debt.RemainingAmount = debt.Amount - (debt.PaidAmount ?? 0);
+        
         debt.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync(cancellationToken);
         return Result.Success();

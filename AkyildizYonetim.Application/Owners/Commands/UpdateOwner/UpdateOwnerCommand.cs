@@ -15,6 +15,7 @@ public record UpdateOwnerCommand : IRequest<Result>
     public string ApartmentNumber { get; init; } = string.Empty;
     public decimal MonthlyDues { get; init; }
     public bool IsActive { get; init; }
+    public List<string> Flats { get; init; } = new();
 }
 
 public class UpdateOwnerCommandHandler : IRequestHandler<UpdateOwnerCommand, Result>
@@ -45,8 +46,32 @@ public class UpdateOwnerCommandHandler : IRequestHandler<UpdateOwnerCommand, Res
         owner.IsActive = request.IsActive;
         owner.UpdatedAt = DateTime.UtcNow;
 
+        // Katları güncelle
+        if (request.Flats != null)
+        {
+            // Mevcut atamaları temizle
+            var currentFlats = await _context.Flats
+                .Where(f => f.OwnerId == owner.Id)
+                .ToListAsync(cancellationToken);
+
+            foreach (var f in currentFlats)
+            {
+                f.OwnerId = null;
+            }
+
+            // Yeni seçilen katları ata
+            var newFlats = await _context.Flats
+                .Where(f => request.Flats.Contains(f.Code))
+                .ToListAsync(cancellationToken);
+
+            foreach (var f in newFlats)
+            {
+                f.OwnerId = owner.Id;
+            }
+        }
+
         await _context.SaveChangesAsync(cancellationToken);
 
         return Result.Success();
     }
-} 
+}

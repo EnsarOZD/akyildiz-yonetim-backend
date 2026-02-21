@@ -1,29 +1,141 @@
 using AkyildizYonetim.Application.Users.Commands.CreateUser;
 using AkyildizYonetim.Application.Common.Interfaces;
+using AkyildizYonetim.Domain.Entities;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Cryptography;
+using System.Text;
+using Microsoft.Extensions.Options;
+using AkyildizYonetim.Application.Common.Models;
+
+using Microsoft.AspNetCore.Authorization;
 
 namespace AkyildizYonetim.API.Controllers;
 
+[Authorize(Roles = "Admin")]
 [ApiController]
-[Route("[controller]")]
+[Route("api/[controller]")]
 public class UsersController : ControllerBase
 {
     private readonly IMediator _mediator;
     private readonly IApplicationDbContext _context;
+    private readonly IEmailSender _emailSender;
+    private readonly ClientSettings _clientSettings;
     
-    public UsersController(IMediator mediator, IApplicationDbContext context) 
+    public UsersController(
+        IMediator mediator, 
+        IApplicationDbContext context, 
+        IEmailSender emailSender,
+        IOptions<ClientSettings> clientSettings) 
     { 
         _mediator = mediator; 
         _context = context;
+        _emailSender = emailSender;
+        _clientSettings = clientSettings.Value;
     }
 
     [HttpPost]
-    public async Task<IActionResult> CreateUser([FromBody] CreateUserCommand command)
+    public async Task<IActionResult> CreateUser([FromBody] CreateUserRequest request)
     {
+        // ... (existing code remains as is)
+        var role = MapStringToRole(request.Role);
+        
+        var command = new CreateUserCommand
+        {
+            FirstName = request.FirstName,
+            LastName = request.LastName,
+            Email = request.Email,
+            Role = role,
+            TenantId = request.CompanyId
+        };
+        
         var result = await _mediator.Send(command);
         return result.IsSuccess ? Ok(result.Data) : BadRequest(result.ErrorMessage ?? string.Join(", ", result.Errors));
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetUsers()
+    {
+        // ... (existing code remains as is)
+        var usersData = await _context.Users
+            .Where(u => !u.IsDeleted)
+            .OrderByDescending(u => u.CreatedAt)
+            .Select(u => new
+            {
+                u.Id,
+                u.FirstName,
+                u.LastName,
+                u.Email,
+                u.Role,
+                u.IsActive,
+                CompanyName = u.Tenant != null ? u.Tenant.CompanyName : (u.Owner != null ? u.Owner.FirstName + " " + u.Owner.LastName : null),
+                u.CreatedAt
+            })
+            .ToListAsync();
+
+        var users = usersData.Select(u => new
+        {
+            u.Id,
+            u.FirstName,
+            u.LastName,
+            u.Email,
+            Role = MapRoleToString(u.Role),
+            u.IsActive,
+            u.CompanyName,
+            u.CreatedAt
+        });
+
+        return Ok(users);
+    }
+
+    [HttpPut("{id}")]
+    public async Task<IActionResult> UpdateUser(Guid id, [FromBody] UpdateUserRequest request)
+    {
+        // ... (existing code remains as is)
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == id);
+        if (user == null) return NotFound("Kullanıcı bulunamadı.");
+
+        if (request.FirstName != null) user.FirstName = request.FirstName;
+        if (request.LastName != null) user.LastName = request.LastName;
+        if (request.Email != null) user.Email = request.Email;
+        if (request.IsActive.HasValue) user.IsActive = request.IsActive.Value;
+        if (request.Role != null) user.Role = MapStringToRole(request.Role);
+
+        await _context.SaveChangesAsync(default);
+        return NoContent();
+    }
+
+    [HttpPost("{id}/reset-password")]
+    public async Task<IActionResult> ResetPassword(Guid id)
+    {
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == id && !u.IsDeleted);
+        if (user == null) return NotFound("Kullanıcı bulunamadı.");
+
+        // Şifre sıfırlama token'ı oluştur
+        var resetToken = Guid.NewGuid().ToString("N");
+        user.PasswordResetToken = resetToken;
+        user.ResetTokenExpires = DateTime.UtcNow.AddHours(24);
+        user.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync(default);
+
+        // Şifre sıfırlama linki (Frontend URL)
+        var resetLink = $"{_clientSettings.ClientUrl}/set-password?token={resetToken}&email={user.Email}";
+
+        // E-posta gönder
+        await _emailSender.SendEmailAsync(
+            user.Email, 
+            "Şifre Sıfırlama Talebi - Akyıldız Yönetim", 
+            $"<p>Sayın {user.FirstName} {user.LastName},</p>" +
+            $"<p>Hesabınız için şifre sıfırlama talebi oluşturulmuştur.</p>" +
+            $"<p>Yeni şifrenizi belirlemek için lütfen aşağıdaki bağlantıya tıklayın:</p>" +
+            $"<p><a href='{resetLink}' style='padding: 10px 20px; background-color: #F59E0B; color: white; text-decoration: none; border-radius: 5px;'>Şifremi Sıfırla</a></p>" +
+            $"<p>Bu bağlantı 24 saat boyunca geçerlidir.</p>" +
+            $"<p>Eğer bu talebi siz yapmadıysanız lütfen yöneticinizle iletişime geçin.</p>"
+        );
+
+        return Ok(new { message = "Şifre sıfırlama bağlantısı e-posta ile gönderildi." });
     }
 
     [HttpGet("debug")]
@@ -37,7 +149,7 @@ public class UsersController : ControllerBase
                 u.Email,
                 u.FirstName,
                 u.LastName,
-                u.Role,
+                Role = u.Role.ToString(),
                 u.IsActive,
                 u.CreatedAt
             })
@@ -49,4 +161,61 @@ public class UsersController : ControllerBase
             Users = users
         });
     }
-} 
+
+    private static UserRole MapStringToRole(string role)
+    {
+        if (string.IsNullOrEmpty(role)) return UserRole.Observer;
+        
+        return role.ToLower() switch
+        {
+            "admin" => UserRole.Admin,
+            "manager" => UserRole.Owner,
+            "tenant" => UserRole.Tenant,
+            _ => UserRole.Observer
+        };
+    }
+
+    private static string MapRoleToString(UserRole role)
+    {
+        return role switch
+        {
+            UserRole.Admin => "admin",
+            UserRole.Owner => "manager",
+            UserRole.Tenant => "tenant",
+            _ => "viewer"
+        };
+    }
+
+    private string GenerateTemporaryPassword(int length)
+    {
+        const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%";
+        var random = new Random();
+        return new string(Enumerable.Repeat(chars, length).Select(s => s[random.Next(s.Length)]).ToArray());
+    }
+
+    private string HashPassword(string password)
+    {
+        using var sha256 = SHA256.Create();
+        var bytes = Encoding.UTF8.GetBytes(password);
+        var hash = sha256.ComputeHash(bytes);
+        return Convert.ToBase64String(hash);
+    }
+}
+
+public class CreateUserRequest
+{
+    public string FirstName { get; set; } = string.Empty;
+    public string LastName { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+    public string Role { get; set; } = string.Empty;
+    public Guid? CompanyId { get; set; }
+}
+
+public class UpdateUserRequest
+{
+    public string? FirstName { get; set; }
+    public string? LastName { get; set; }
+    public string? Email { get; set; }
+    public string? Role { get; set; }
+    public bool? IsActive { get; set; }
+}

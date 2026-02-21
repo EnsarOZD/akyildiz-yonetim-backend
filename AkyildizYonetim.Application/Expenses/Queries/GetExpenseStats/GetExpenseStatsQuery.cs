@@ -14,14 +14,21 @@ public record GetExpenseStatsQuery : IRequest<Result<ExpenseStatsDto>>
 public class GetExpenseStatsQueryHandler : IRequestHandler<GetExpenseStatsQuery, Result<ExpenseStatsDto>>
 {
     private readonly IApplicationDbContext _context;
+    private readonly ICurrentUserService _currentUserService;
 
-    public GetExpenseStatsQueryHandler(IApplicationDbContext context)
+    public GetExpenseStatsQueryHandler(IApplicationDbContext context, ICurrentUserService currentUserService)
     {
         _context = context;
+        _currentUserService = currentUserService;
     }
 
     public async Task<Result<ExpenseStatsDto>> Handle(GetExpenseStatsQuery request, CancellationToken cancellationToken)
     {
+        if (!_currentUserService.IsAdmin && !_currentUserService.IsManager)
+        {
+            return Result<ExpenseStatsDto>.Success(new ExpenseStatsDto());
+        }
+
         try
         {
             var query = _context.Expenses.Where(e => !e.IsDeleted);

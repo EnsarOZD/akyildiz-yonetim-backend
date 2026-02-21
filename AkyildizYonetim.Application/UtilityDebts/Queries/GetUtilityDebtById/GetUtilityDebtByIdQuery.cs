@@ -33,7 +33,9 @@ public class GetUtilityDebtByIdQueryHandler : IRequestHandler<GetUtilityDebtById
                 TenantId = d.TenantId,
                 OwnerId = d.OwnerId,
                 CreatedAt = d.CreatedAt,
-                UpdatedAt = d.UpdatedAt
+                UpdatedAt = d.UpdatedAt,
+                RemainingAmount = d.RemainingAmount,
+                DueDate = d.DueDate
             })
             .FirstOrDefaultAsync(cancellationToken);
         if (d == null)
@@ -53,9 +55,16 @@ public class UtilityDebtDto
     public DebtStatus Status { get; set; }
     public decimal? PaidAmount { get; set; }
     public DateTime? PaidDate { get; set; }
+    public decimal RemainingAmount { get; set; }
+    public DateTime DueDate { get; set; }
     public string? Description { get; set; }
     public Guid? TenantId { get; set; }
     public Guid? OwnerId { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
+
+    // (Opsiyonel görsel için)
+    public string? FlatCode { get; set; }
+    public string? TenantCompanyName { get; set; }
+    public string? OwnerName { get; set; }
 } 

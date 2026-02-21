@@ -16,14 +16,11 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
     public DbSet<Expense> Expenses => Set<Expense>();
     public DbSet<Flat> Flats => Set<Flat>();
     public DbSet<User> Users => Set<User>();
-    public DbSet<UtilityDebt> UtilityDebts { get; set; }
+    public DbSet<UtilityDebt> UtilityDebts => Set<UtilityDebt>();
     public DbSet<AdvanceAccount> AdvanceAccounts => Set<AdvanceAccount>();
     public DbSet<AidatDefinition> AidatDefinitions => Set<AidatDefinition>();
-    public DbSet<MeterReading> MeterReadings => Set<MeterReading>();
-    public DbSet<UtilityBill> UtilityBills => Set<UtilityBill>();
     public DbSet<PaymentDebt> PaymentDebts => Set<PaymentDebt>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
-    public DbSet<UtilityPricingConfiguration> UtilityPricingConfigurations => Set<UtilityPricingConfiguration>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -38,12 +35,8 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
         modelBuilder.Entity<User>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<UtilityDebt>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<AdvanceAccount>().HasQueryFilter(e => !e.IsDeleted);
-        modelBuilder.Entity<AidatDefinition>().HasQueryFilter(e => !e.IsDeleted);
-        modelBuilder.Entity<MeterReading>().HasQueryFilter(e => !e.IsDeleted);
-        modelBuilder.Entity<UtilityBill>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<PaymentDebt>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<AuditLog>().HasQueryFilter(e => !e.IsDeleted);
-        modelBuilder.Entity<UtilityPricingConfiguration>().HasQueryFilter(e => !e.IsDeleted);
         
         
         

@@ -19,9 +19,6 @@ public class TenantConfiguration : IEntityTypeConfiguration<Tenant>
             .IsRequired()
             .HasMaxLength(100);
             
-        builder.Property(t => t.CompanyType)
-            .IsRequired()
-            .HasMaxLength(20);
             
         builder.Property(t => t.IdentityNumber)
             .IsRequired()
@@ -41,9 +38,6 @@ public class TenantConfiguration : IEntityTypeConfiguration<Tenant>
         builder.Property(t => t.ContactPersonEmail)
             .HasMaxLength(255);
         
-        // Sözleşme Bilgileri
-        builder.Property(t => t.ContractStartDate);
-        builder.Property(t => t.ContractEndDate);
         
         // Aidat ve Borç Yönetimi
         builder.Property(t => t.MonthlyAidat)

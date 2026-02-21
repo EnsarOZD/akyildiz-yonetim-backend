@@ -16,6 +16,8 @@ public class User : BaseEntity
     public string PasswordHash { get; set; } = string.Empty;
     public UserRole Role { get; set; }
     public bool IsActive { get; set; } = true;
+    public string? PasswordResetToken { get; set; }
+    public DateTime? ResetTokenExpires { get; set; }
     public Guid? OwnerId { get; set; }
     public Guid? TenantId { get; set; }
     // Navigation

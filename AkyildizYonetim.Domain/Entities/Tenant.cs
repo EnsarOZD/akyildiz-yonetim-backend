@@ -5,7 +5,6 @@ public class Tenant : BaseEntity
     // İş Yeri Bilgileri
     public string CompanyName { get; set; } = string.Empty;
     public string BusinessType { get; set; } = string.Empty; // Ticaret, Hizmet, Üretim vs.
-    public string CompanyType { get; set; } = string.Empty; // Individual, Corporate
     public string IdentityNumber { get; set; } = string.Empty; // TC Kimlik No veya Vergi No
     
     // İletişim Kişisi Bilgileri
@@ -16,10 +15,6 @@ public class Tenant : BaseEntity
     // Aidat ve Borç Yönetimi
     public decimal MonthlyAidat { get; set; } // Aylık aidat
     public bool IsActive { get; set; } = true;
-    
-    // Sözleşme Bilgileri (Opsiyonel)
-    public DateTime? ContractStartDate { get; set; }
-    public DateTime? ContractEndDate { get; set; }
     
     // Navigation properties
     public virtual ICollection<Payment> Payments { get; set; } = new List<Payment>();

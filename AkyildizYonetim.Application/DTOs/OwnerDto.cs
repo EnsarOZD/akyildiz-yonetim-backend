@@ -12,5 +12,5 @@ public class OwnerDto
     public bool IsActive { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
-    public List<Guid> Flats { get; set; } = new List<Guid>();
+    public List<FlatSummaryDto> Flats { get; set; } = new List<FlatSummaryDto>();
 } 

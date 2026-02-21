@@ -10,7 +10,7 @@ public class ApplicationDbContextFactory : IDesignTimeDbContextFactory<Applicati
         var optionsBuilder = new DbContextOptionsBuilder<ApplicationDbContext>();
         
         // Development ortamı için connection string
-        var connectionString = "Server=localhost;Database=AkyildizYonetimDb;Trusted_Connection=true;TrustServerCertificate=true;";
+        var connectionString = "Server=ENSAROZD\\SQLEXPRESS2025;Database=AkyildizYonetimDB;Trusted_Connection=true;TrustServerCertificate=true;MultipleActiveResultSets=true;";
         
         optionsBuilder.UseSqlServer(connectionString);
 
