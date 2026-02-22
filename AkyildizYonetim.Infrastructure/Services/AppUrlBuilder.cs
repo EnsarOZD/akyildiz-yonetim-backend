@@ -17,8 +17,8 @@ public class AppUrlBuilder : IAppUrlBuilder
     }
 
     public string BuildInvitationLink(string token, string email)
-        => $"{_baseUrl}/invite?token={token}&email={email}";
+        => $"{_baseUrl}/#/invite?token={token}&email={email}";
 
     public string BuildResetPasswordLink(string token, string email)
-        => $"{_baseUrl}/reset-password?token={token}&email={email}";
+        => $"{_baseUrl}/#/reset-password?token={token}&email={email}";
 }
