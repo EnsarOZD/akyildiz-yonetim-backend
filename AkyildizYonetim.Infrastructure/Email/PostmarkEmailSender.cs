@@ -22,6 +22,11 @@ public class PostmarkEmailSender : IEmailSender
         _appName = configuration["APP_NAME"] ?? "Akyıldız Yönetim";
     }
 
+    public async Task SendEmailAsync(string toEmail, string subject, string body)
+    {
+        await SendAsync(toEmail, subject, body);
+    }
+
     public async Task SendInvitationEmailAsync(string toEmail, string invitationLink)
     {
         await SendAsync(
