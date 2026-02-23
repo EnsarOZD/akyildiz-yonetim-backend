@@ -23,6 +23,12 @@ public class ExceptionMiddleware
         {
             await _next(context);
         }
+        catch (FluentValidation.ValidationException valEx)
+        {
+            context.Response.StatusCode = (int)HttpStatusCode.BadRequest;
+            var response = Result.Failure(valEx.Errors.Select(e => e.ErrorMessage).ToList());
+            await context.Response.WriteAsJsonAsync(response);
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, ex.Message);

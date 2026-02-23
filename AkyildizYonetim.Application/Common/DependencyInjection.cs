@@ -1,4 +1,5 @@
-﻿using AkyildizYonetim.Application.Flats.Services;
+﻿using AkyildizYonetim.Application.Common.Behaviors;
+using AkyildizYonetim.Application.Flats.Services;
 using AutoMapper;
 using FluentValidation;
 using MediatR;
@@ -11,7 +12,10 @@ namespace AkyildizYonetim.Application.Common
 		public static IServiceCollection AddApplication(this IServiceCollection services)
 		{
 			// MediatR: bu assembly’deki tüm handler’lar
-			services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(ApplicationAssemblyMarker).Assembly));
+			services.AddMediatR(cfg => {
+                cfg.RegisterServicesFromAssembly(typeof(ApplicationAssemblyMarker).Assembly);
+                cfg.AddOpenBehavior(typeof(ValidationBehavior<,>));
+            });
 
 			// AutoMapper: bu assembly’deki tüm Profile sınıfları (Common/Mapping/* dahil)
 			services.AddAutoMapper(typeof(ApplicationAssemblyMarker).Assembly);
@@ -19,10 +23,7 @@ namespace AkyildizYonetim.Application.Common
 			// FluentValidation: bu assembly’deki tüm validator’lar
 			services.AddValidatorsFromAssembly(typeof(ApplicationAssemblyMarker).Assembly);
 
-			// Unit pay hesabı servisi (daha önce verdiğimiz)
-			services.AddSingleton<AkyildizYonetim.Application.Flats.Services.IFlatShareCalculator,
-								  AkyildizYonetim.Application.Flats.Services.FlatShareCalculator>();
-
+			// Unit pay hesabı servisi
 			services.AddSingleton<IFlatShareCalculator, FlatShareCalculator>();
 
 			return services;

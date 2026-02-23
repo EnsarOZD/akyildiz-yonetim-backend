@@ -1,6 +1,7 @@
 using AkyildizYonetim.API.Middleware;
 using AkyildizYonetim.Application.Common;
 using AkyildizYonetim.Infrastructure;
+using AkyildizYonetim.Infrastructure.Jwt;
 using AkyildizYonetim.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -16,11 +17,22 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 
+// JwtSettings Validation
+builder.Services.AddOptions<JwtSettings>()
+    .Bind(builder.Configuration.GetSection("JwtSettings"))
+    .Validate(settings => 
+    {
+        if (string.IsNullOrWhiteSpace(settings.SecretKey) || settings.SecretKey.Length < 32) return false;
+        if (string.IsNullOrWhiteSpace(settings.Issuer)) return false;
+        if (string.IsNullOrWhiteSpace(settings.Audience)) return false;
+        if (settings.ExpirationInMinutes <= 0) return false;
+        return true;
+    }, "JwtSettings are invalid. SecretKey must be at least 32 characters, and Issuer/Audience/Expiration are required.")
+    .ValidateOnStart();
+
 // JWT Authentication
-var jwtSettings = builder.Configuration.GetSection("JwtSettings");
-var secretKey = jwtSettings["SecretKey"] ?? throw new InvalidOperationException("JWT SecretKey is not configured");
-var issuer = jwtSettings["Issuer"] ?? throw new InvalidOperationException("JWT Issuer is not configured");
-var audience = jwtSettings["Audience"] ?? throw new InvalidOperationException("JWT Audience is not configured");
+var jwtSettings = builder.Configuration.GetSection("JwtSettings").Get<JwtSettings>();
+if (jwtSettings == null) throw new InvalidOperationException("JwtSettings section is missing");
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 	.AddJwtBearer(options =>
@@ -28,11 +40,11 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 		options.TokenValidationParameters = new TokenValidationParameters
 		{
 			ValidateIssuerSigningKey = true,
-			IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey)),
+			IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.SecretKey)),
 			ValidateIssuer = true,
-			ValidIssuer = issuer,
+			ValidIssuer = jwtSettings.Issuer,
 			ValidateAudience = true,
-			ValidAudience = audience,
+			ValidAudience = jwtSettings.Audience,
 			ValidateLifetime = true,
 			ClockSkew = TimeSpan.Zero
 		};
@@ -71,6 +83,12 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 // CORS
+var clientUrl = builder.Configuration["ClientSettings:ClientUrl"]?.TrimEnd('/');
+if (string.IsNullOrEmpty(clientUrl) && !builder.Environment.IsDevelopment())
+{
+    throw new InvalidOperationException("Production ClientUrl is not configured in ClientSettings");
+}
+
 builder.Services.AddCors(options =>
 {
 	options.AddPolicy("AllowAll", policy =>
@@ -80,10 +98,9 @@ builder.Services.AddCors(options =>
 
 	options.AddPolicy("Production", policy =>
 	{
-		policy.WithOrigins("https://www.akyildizyonetim.com")
+		policy.WithOrigins(clientUrl!) // clientUrl is mandatory here
 			  .AllowAnyHeader()
-			  .AllowAnyMethod()
-			  .AllowCredentials();
+			  .AllowAnyMethod();
 	});
 });
 
@@ -97,10 +114,31 @@ builder.Services.AddControllers();
 
 var app = builder.Build();
 
-// Global Error Handling
+// 1) Global Error Handling
 app.UseMiddleware<ExceptionMiddleware>();
 
-// Database Migration & Seeding
+// 2) Swagger (Dev Only)
+if (app.Environment.IsDevelopment())
+{
+	app.UseSwagger();
+	app.UseSwaggerUI();
+}
+
+// 3) HTTPS Redirection
+app.UseHttpsRedirection();
+
+// 4) CORS (Auth öncesi)
+var corsPolicy = app.Environment.IsDevelopment() ? "AllowAll" : "Production";
+app.UseCors(corsPolicy);
+
+// 5) Authentication & Authorization
+app.UseAuthentication();
+app.UseAuthorization();
+
+// 6) Database Migration & Seeding
+var runMigrations = builder.Configuration.GetValue<bool>("RunMigrationsOnStartup");
+if (app.Environment.IsDevelopment()) runMigrations = true; // Dev'de kolaylık için açık kalsın
+
 using (var scope = app.Services.CreateScope())
 {
 	var services = scope.ServiceProvider;
@@ -109,8 +147,16 @@ using (var scope = app.Services.CreateScope())
 
 	try
 	{
-		// Always apply migrations to ensure remote DB is synced
-		context.Database.Migrate();
+		if (runMigrations)
+		{
+            logger.LogInformation("Veritabanı migration'ları kontrol ediliyor...");
+		    context.Database.Migrate();
+            logger.LogInformation("Veritabanı migration'ları başarıyla tamamlandı.");
+		}
+        else
+        {
+            logger.LogInformation("RunMigrationsOnStartup kapalı. Migration atlanıyor.");
+        }
 		
 		await DataSeeder.SeedAsync(context, logger);
 	}
@@ -120,22 +166,7 @@ using (var scope = app.Services.CreateScope())
 	}
 }
 
-
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-	app.UseSwagger();
-	app.UseSwaggerUI();
-    app.UseCors("AllowAll");
-}
-else
-{
-    app.UseCors("AllowAll"); // Change to "Production" if origins are strictly known
-}
-
-app.UseAuthentication();
-app.UseAuthorization();
-app.UseHttpsRedirection();
+// 7) Endpoint Mapping
 app.MapControllers();
 
 app.Run();
