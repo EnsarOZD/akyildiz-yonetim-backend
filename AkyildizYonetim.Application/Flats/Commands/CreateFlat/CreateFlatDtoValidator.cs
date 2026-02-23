@@ -6,9 +6,6 @@ public class CreateFlatDtoValidator : AbstractValidator<CreateFlatDto>
 {
 	public CreateFlatDtoValidator()
 	{
-		// 0) Code normalize
-		Transform(x => x.Code, c => c?.Trim().ToUpperInvariant());
-
 		// Temel
 		RuleFor(x => x.Code).NotEmpty().MaximumLength(32);
 		RuleFor(x => x.UnitArea).GreaterThanOrEqualTo(0);

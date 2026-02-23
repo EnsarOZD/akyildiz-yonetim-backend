@@ -50,13 +50,13 @@ public class GetDebtsSummaryQueryHandler
                 if (firstDebt.TenantId.HasValue && firstDebt.TenantId.Value == id)
                 {
                     var tenant = await _context.Tenants.FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
-                    displayName = tenant?.CompanyName ?? tenant?.FullName ?? "Bilinmeyen Kiracı";
+                    displayName = !string.IsNullOrEmpty(tenant?.CompanyName) ? tenant.CompanyName : (tenant?.ContactPersonName ?? "Bilinmeyen Kiracı");
                     entityType = "Tenant";
                 }
                 else if (firstDebt.OwnerId.HasValue && firstDebt.OwnerId.Value == id)
                 {
                     var owner = await _context.Owners.FirstOrDefaultAsync(o => o.Id == id, cancellationToken);
-                    displayName = owner?.Name ?? "Bilinmeyen Mal Sahibi";
+                    displayName = owner != null ? $"{owner.FirstName} {owner.LastName}" : "Bilinmeyen Mal Sahibi";
                     entityType = "Owner";
                 }
 
