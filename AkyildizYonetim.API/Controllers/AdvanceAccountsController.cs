@@ -6,10 +6,12 @@ using AkyildizYonetim.Application.AdvanceAccounts.Queries.GetAdvanceAccountById;
 using AkyildizYonetim.Application.AdvanceAccounts.Queries.GetAdvanceAccounts;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Logging;
 
 namespace AkyildizYonetim.API.Controllers;
 
+[Authorize(Policy = "TenantRead")]
 [ApiController]
 [Route("api/[controller]")]
 public class AdvanceAccountsController : ControllerBase
@@ -81,6 +83,7 @@ public class AdvanceAccountsController : ControllerBase
         }
     }
 
+    [Authorize(Policy = "TenantWrite")]
     [HttpPost]
     public async Task<IActionResult> CreateAdvanceAccount([FromBody] CreateAdvanceAccountRequest request)
     {
@@ -122,6 +125,7 @@ public class AdvanceAccountsController : ControllerBase
         }
     }
 
+    [Authorize(Policy = "TenantWrite")]
     [HttpPut("{id}")]
     public async Task<IActionResult> UpdateAdvanceAccount(Guid id, [FromBody] UpdateAdvanceAccountRequest request)
     {
@@ -165,6 +169,7 @@ public class AdvanceAccountsController : ControllerBase
         }
     }
 
+    [Authorize(Policy = "TenantWrite")]
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteAdvanceAccount(Guid id)
     {
@@ -191,6 +196,7 @@ public class AdvanceAccountsController : ControllerBase
         }
     }
 
+    [Authorize(Policy = "TenantWrite")]
     [HttpPost("use")]
     public async Task<IActionResult> UseAdvanceAccount([FromBody] UseAdvanceAccountRequest request)
     {

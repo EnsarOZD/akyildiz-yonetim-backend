@@ -1,6 +1,7 @@
 using AkyildizYonetim.Application.Reports.Queries.GetFinancialReport;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 
 namespace AkyildizYonetim.API.Controllers;
 

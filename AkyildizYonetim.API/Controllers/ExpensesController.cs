@@ -7,6 +7,7 @@ using AkyildizYonetim.Application.Expenses.Queries.GetExpenseStats;
 using AkyildizYonetim.Domain.Entities;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using System.Text.Json;
 
 namespace AkyildizYonetim.API.Controllers;

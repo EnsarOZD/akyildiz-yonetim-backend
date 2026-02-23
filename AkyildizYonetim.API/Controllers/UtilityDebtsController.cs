@@ -13,7 +13,7 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace AkyildizYonetim.API.Controllers;
 
-[Authorize]
+[Authorize(Policy = "TenantRead")]
 [ApiController]
 [Route("api/[controller]")]
 public class UtilityDebtsController : ControllerBase
@@ -49,7 +49,7 @@ public class UtilityDebtsController : ControllerBase
         return Task.FromResult<IActionResult>(Ok(new List<object>()));
     }
 
-    [Authorize(Roles = "Admin")]
+    [Authorize(Policy = "TenantWrite")]
     [HttpPost]
     public async Task<IActionResult> CreateUtilityDebt([FromBody] CreateUtilityDebtCommand command)
     {
@@ -57,7 +57,7 @@ public class UtilityDebtsController : ControllerBase
         return result.IsSuccess ? Ok(result.Data) : BadRequest(result.ErrorMessage ?? string.Join(", ", result.Errors));
     }
 
-    [Authorize(Roles = "Admin")]
+    [Authorize(Policy = "TenantWrite")]
     [HttpPost("bulk")]
     public async Task<IActionResult> CreateBulkUtilityDebts([FromBody] CreateBulkUtilityDebtsCommand command)
     {
@@ -65,7 +65,7 @@ public class UtilityDebtsController : ControllerBase
         return result.IsSuccess ? Ok(result.Data) : BadRequest(result.ErrorMessage ?? string.Join(", ", result.Errors));
     }
 
-    [Authorize(Roles = "Admin")]
+    [Authorize(Policy = "TenantWrite")]
     [HttpPut("{id}")]
     public async Task<IActionResult> UpdateUtilityDebt(Guid id, [FromBody] UpdateUtilityDebtCommand command)
     {
@@ -75,7 +75,7 @@ public class UtilityDebtsController : ControllerBase
         return result.IsSuccess ? NoContent() : BadRequest(result.ErrorMessage ?? string.Join(", ", result.Errors));
     }
 
-    [Authorize(Roles = "Admin")]
+    [Authorize(Policy = "TenantWrite")]
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteUtilityDebt(Guid id)
     {
@@ -83,7 +83,7 @@ public class UtilityDebtsController : ControllerBase
         return result.IsSuccess ? NoContent() : NotFound(result.ErrorMessage ?? string.Join(", ", result.Errors));
     }
 
-    [Authorize(Roles = "Admin")]
+    [Authorize(Policy = "TenantWrite")]
     [HttpPatch("{id}")]
     public async Task<IActionResult> PatchUtilityDebt(Guid id, [FromBody] AkyildizYonetim.Application.UtilityDebts.Commands.PatchUtilityDebt.PatchUtilityDebtCommand command)
     {
@@ -92,7 +92,7 @@ public class UtilityDebtsController : ControllerBase
         return result.IsSuccess ? NoContent() : BadRequest(result.ErrorMessage ?? string.Join(", ", result.Errors));
     }
 
-    [Authorize(Roles = "Admin")]
+    [Authorize(Policy = "TenantWrite")]
     [HttpDelete("period/{period}")]
     public Task<IActionResult> DeleteByPeriod(string period)
     {
@@ -101,7 +101,7 @@ public class UtilityDebtsController : ControllerBase
         return Task.FromResult<IActionResult>(NoContent());
     }
 
-    [Authorize(Roles = "Admin")]
+    [Authorize(Policy = "TenantWrite")]
     [HttpPost("distribute")]
     public async Task<IActionResult> DistributeSharedExpense([FromBody] DistributeSharedExpenseRequest request)
     {
@@ -189,7 +189,7 @@ public class UtilityDebtsController : ControllerBase
         }
     }
 
-    [Authorize(Roles = "Admin")]
+    [Authorize(Policy = "TenantWrite")]
     [HttpPost("create-aidat")]
     public async Task<IActionResult> CreateAidat([FromBody] CreateAidatRequest request, CancellationToken ct)
     {

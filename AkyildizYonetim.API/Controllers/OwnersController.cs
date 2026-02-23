@@ -5,9 +5,11 @@ using AkyildizYonetim.Application.Owners.Queries.GetOwnerById;
 using AkyildizYonetim.Application.Owners.Queries.GetOwners;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 
 namespace AkyildizYonetim.API.Controllers;
 
+[Authorize(Policy = "TenantRead")]
 [ApiController]
 [Route("api/[controller]")]
 public class OwnersController : ControllerBase
@@ -33,6 +35,7 @@ public class OwnersController : ControllerBase
         return result.IsSuccess ? Ok(result.Data) : NotFound(result.ErrorMessage ?? string.Join(", ", result.Errors));
     }
 
+    [Authorize(Policy = "TenantWrite")]
     [HttpPost]
     public async Task<IActionResult> CreateOwner([FromBody] CreateOwnerCommand command)
     {
@@ -40,6 +43,7 @@ public class OwnersController : ControllerBase
         return result.IsSuccess ? CreatedAtAction(nameof(GetOwnerById), new { id = result.Data }, null) : BadRequest(result.ErrorMessage ?? string.Join(", ", result.Errors));
     }
 
+    [Authorize(Policy = "TenantWrite")]
     [HttpPut("{id}")]
     public async Task<IActionResult> UpdateOwner(Guid id, [FromBody] UpdateOwnerCommand command)
     {
@@ -49,6 +53,7 @@ public class OwnersController : ControllerBase
         return result.IsSuccess ? NoContent() : BadRequest(result.ErrorMessage ?? string.Join(", ", result.Errors));
     }
 
+    [Authorize(Policy = "TenantWrite")]
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteOwner(Guid id)
     {

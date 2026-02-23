@@ -5,9 +5,11 @@ using AkyildizYonetim.Application.AidatDefinitions.Queries.GetAidatDefinitionByI
 using AkyildizYonetim.Application.AidatDefinitions.Queries.GetAidatDefinitions;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 
 namespace AkyildizYonetim.API.Controllers;
 
+[Authorize(Policy = "TenantRead")]
 [ApiController]
 [Route("api/aidat-definitions")]
 public class AidatDefinitionsController : ControllerBase
@@ -44,6 +46,7 @@ public class AidatDefinitionsController : ControllerBase
         return result.IsSuccess ? Ok(result.Data) : NotFound(result.ErrorMessage ?? string.Join(", ", result.Errors));
     }
 
+    [Authorize(Policy = "TenantWrite")]
     [HttpPost]
     public async Task<IActionResult> CreateAidatDefinition([FromBody] CreateAidatDefinitionCommand command)
     {
@@ -51,6 +54,7 @@ public class AidatDefinitionsController : ControllerBase
         return result.IsSuccess ? CreatedAtAction(nameof(GetAidatDefinitionById), new { id = result.Data }, null) : BadRequest(result.ErrorMessage ?? string.Join(", ", result.Errors));
     }
 
+    [Authorize(Policy = "TenantWrite")]
     [HttpPut("{id}")]
     public async Task<IActionResult> UpdateAidatDefinition(Guid id, [FromBody] UpdateAidatDefinitionCommand command)
     {
@@ -61,6 +65,7 @@ public class AidatDefinitionsController : ControllerBase
         return result.IsSuccess ? NoContent() : BadRequest(result.ErrorMessage ?? string.Join(", ", result.Errors));
     }
 
+    [Authorize(Policy = "TenantWrite")]
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteAidatDefinition(Guid id)
     {

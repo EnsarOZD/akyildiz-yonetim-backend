@@ -2,6 +2,7 @@ using AkyildizYonetim.Application.AuditLogs.Queries.GetAuditLogs;
 using AkyildizYonetim.Domain.Entities;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 
 namespace AkyildizYonetim.API.Controllers;
 

@@ -6,6 +6,7 @@ using AkyildizYonetim.Application.Flats.Queries.GetFlats;
 using AkyildizYonetim.Application.DTOs;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using static AkyildizYonetim.Domain.Entities.Enums.FlatEnums; // UnitType için
 
 namespace AkyildizYonetim.API.Controllers;
