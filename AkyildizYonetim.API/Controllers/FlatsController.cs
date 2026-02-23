@@ -10,6 +10,7 @@ using static AkyildizYonetim.Domain.Entities.Enums.FlatEnums; // UnitType için
 
 namespace AkyildizYonetim.API.Controllers;
 
+[Authorize(Policy = "TenantRead")]
 [ApiController]
 [Route("api/[controller]")]
 public class FlatsController : ControllerBase

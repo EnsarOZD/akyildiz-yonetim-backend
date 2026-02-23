@@ -2,10 +2,12 @@ namespace AkyildizYonetim.Domain.Entities;
 
 public enum UserRole
 {
-    Admin,      // Yönetici
+    Admin,      // Sistem Yöneticisi
+    Manager,    // Yönetici (Müdür)
     Owner,      // Mal Sahibi
     Tenant,     // Kiracı
-    Observer    // Gözlemci
+    Observer,   // Gözlemci (Avukat vb.)
+    DataEntry   // Veri Giriş Sorumlusu
 }
 
 public class User : BaseEntity

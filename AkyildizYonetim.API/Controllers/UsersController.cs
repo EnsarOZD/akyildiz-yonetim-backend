@@ -13,7 +13,7 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace AkyildizYonetim.API.Controllers;
 
-[Authorize(Roles = "Admin")]
+[Authorize(Policy = "TenantWrite")]
 [ApiController]
 [Route("api/[controller]")]
 public class UsersController : ControllerBase
@@ -35,6 +35,7 @@ public class UsersController : ControllerBase
         _clientSettings = clientSettings.Value;
     }
 
+    [Authorize(Policy = "TenantWrite")]
     [HttpPost]
     public async Task<IActionResult> CreateUser([FromBody] CreateUserRequest request)
     {
@@ -89,6 +90,7 @@ public class UsersController : ControllerBase
         return Ok(users);
     }
 
+    [Authorize(Policy = "TenantWrite")]
     [HttpPut("{id}")]
     public async Task<IActionResult> UpdateUser(Guid id, [FromBody] UpdateUserRequest request)
     {
@@ -153,6 +155,21 @@ public class UsersController : ControllerBase
         });
     }
 
+    [HttpGet("roles")]
+    public IActionResult GetRoles()
+    {
+        var roles = new[]
+        {
+            new { code = "admin", label = "Sistem Yöneticisi", requiresTenant = false },
+            new { code = "manager", label = "Yönetici (Müdür)", requiresTenant = false },
+            new { code = "owner", label = "Mal Sahibi", requiresTenant = false },
+            new { code = "tenant", label = "Kiracı", requiresTenant = true },
+            new { code = "observer", label = "Gözlemci (Avukat vb.)", requiresTenant = false },
+            new { code = "dataentry", label = "Veri Giriş Sorumlusu", requiresTenant = false }
+        };
+        return Ok(roles);
+    }
+
     private static UserRole MapStringToRole(string role)
     {
         if (string.IsNullOrEmpty(role)) return UserRole.Observer;
@@ -160,21 +177,18 @@ public class UsersController : ControllerBase
         return role.ToLower() switch
         {
             "admin" => UserRole.Admin,
-            "manager" => UserRole.Owner,
+            "manager" => UserRole.Manager,
+            "owner" => UserRole.Owner,
             "tenant" => UserRole.Tenant,
+            "observer" => UserRole.Observer,
+            "dataentry" => UserRole.DataEntry,
             _ => UserRole.Observer
         };
     }
 
     private static string MapRoleToString(UserRole role)
     {
-        return role switch
-        {
-            UserRole.Admin => "admin",
-            UserRole.Owner => "manager",
-            UserRole.Tenant => "tenant",
-            _ => "viewer"
-        };
+        return role.ToString().ToLower();
     }
 
     private string GenerateTemporaryPassword(int length)

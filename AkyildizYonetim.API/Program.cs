@@ -57,7 +57,13 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 		};
 	});
 
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("TenantRead", policy => policy.RequireRole("admin", "manager", "dataentry", "observer", "tenant"));
+    options.AddPolicy("TenantWrite", policy => policy.RequireRole("admin", "manager", "dataentry"));
+    options.AddPolicy("FinanceRead", policy => policy.RequireRole("admin", "manager"));
+    options.AddPolicy("FinanceWrite", policy => policy.RequireRole("admin", "manager"));
+});
 
 // Swagger with JWT support
 builder.Services.AddSwaggerGen(c =>

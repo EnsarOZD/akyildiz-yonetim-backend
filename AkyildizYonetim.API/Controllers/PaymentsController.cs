@@ -15,7 +15,7 @@ using AkyildizYonetim.Domain.Entities;
 
 namespace AkyildizYonetim.API.Controllers;
 
-[Authorize]
+[Authorize(Policy = "TenantRead")]
 [ApiController]
 [Route("api/[controller]")]
 public class PaymentsController : ControllerBase
@@ -140,7 +140,7 @@ public class PaymentsController : ControllerBase
     /// </summary>
     /// <param name="request">Ödeme bilgileri</param>
     /// <returns>Oluşturulan ödeme</returns>
-    [Authorize(Roles = "Admin")]
+    [Authorize(Policy = "TenantWrite")]
     [HttpPost]
     [ProducesResponseType(typeof(PaymentDto), 201)]
     [ProducesResponseType(typeof(object), 400)]
@@ -202,7 +202,7 @@ public class PaymentsController : ControllerBase
         }
     }
 
-    [Authorize(Roles = "Admin")]
+    [Authorize(Policy = "TenantWrite")]
     [HttpPost("with-allocation")]
     public async Task<IActionResult> CreatePaymentWithAllocation([FromBody] CreatePaymentWithDebtAllocationCommand command)
     {
@@ -212,7 +212,7 @@ public class PaymentsController : ControllerBase
             : BadRequest(result.ErrorMessage ?? string.Join(", ", result.Errors));
     }
 
-    [Authorize(Roles = "Admin")]
+    [Authorize(Policy = "TenantWrite")]
     [HttpPut("{id}")]
     public async Task<IActionResult> UpdatePayment(Guid id, [FromBody] UpdatePaymentCommand command)
     {
@@ -228,7 +228,7 @@ public class PaymentsController : ControllerBase
     /// </summary>
     /// <param name="id">Ödeme ID</param>
     /// <returns>Silme işlemi sonucu</returns>
-    [Authorize(Roles = "Admin")]
+    [Authorize(Policy = "TenantWrite")]
     [HttpDelete("{id}")]
     [ProducesResponseType(204)]
     [ProducesResponseType(typeof(object), 404)]

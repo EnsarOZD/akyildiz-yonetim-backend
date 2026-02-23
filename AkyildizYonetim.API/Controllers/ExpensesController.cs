@@ -11,6 +11,7 @@ using System.Text.Json;
 
 namespace AkyildizYonetim.API.Controllers;
 
+[Authorize(Policy = "FinanceRead")]
 [ApiController]
 [Route("api/[controller]")]
 public class ExpensesController : ControllerBase
@@ -63,9 +64,11 @@ public class ExpensesController : ControllerBase
         return result.IsSuccess ? Ok(result.Data) : BadRequest(result.ErrorMessage ?? string.Join(", ", result.Errors));
     }
 
+    [Authorize(Policy = "FinanceWrite")]
     [HttpPost]
     public async Task<IActionResult> CreateExpense([FromBody] JsonElement jsonElement)
     {
+        // ... (remaining methods)
         try
         {
             Console.WriteLine($"🔍 Raw JSON: {jsonElement}");
@@ -105,6 +108,7 @@ public class ExpensesController : ControllerBase
         }
     }
 
+    [Authorize(Policy = "FinanceWrite")]
     [HttpPut("{id}")]
     public async Task<IActionResult> UpdateExpense(Guid id, [FromBody] JsonElement jsonElement)
     {
@@ -148,6 +152,7 @@ public class ExpensesController : ControllerBase
         }
     }
 
+    [Authorize(Policy = "FinanceWrite")]
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteExpense(Guid id)
     {
