@@ -83,11 +83,16 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 // CORS
-var clientUrl = builder.Configuration["ClientSettings:ClientUrl"]?.TrimEnd('/');
-if (string.IsNullOrEmpty(clientUrl) && !builder.Environment.IsDevelopment())
+var clientUrlConfig = builder.Configuration["ClientSettings:ClientUrl"];
+if (string.IsNullOrEmpty(clientUrlConfig) && !builder.Environment.IsDevelopment())
 {
     throw new InvalidOperationException("Production ClientUrl is not configured in ClientSettings");
 }
+
+var clientOrigins = (clientUrlConfig ?? "")
+    .Split(',', StringSplitOptions.RemoveEmptyEntries)
+    .Select(url => url.Trim().TrimEnd('/'))
+    .ToArray();
 
 builder.Services.AddCors(options =>
 {
@@ -98,7 +103,7 @@ builder.Services.AddCors(options =>
 
 	options.AddPolicy("Production", policy =>
 	{
-		policy.WithOrigins(clientUrl!) // clientUrl is mandatory here
+		policy.WithOrigins(clientOrigins)
 			  .AllowAnyHeader()
 			  .AllowAnyMethod();
 	});
