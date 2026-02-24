@@ -3,6 +3,7 @@ using AkyildizYonetim.Application.UtilityDebts.Commands.CreateUtilityDebt.Create
 using AkyildizYonetim.Application.UtilityDebts.Commands.UpdateUtilityDebt;
 using AkyildizYonetim.Application.UtilityDebts.Commands.DeleteUtilityDebt;
 using AkyildizYonetim.Application.UtilityDebts.Queries.GetUtilityDebts;
+using AkyildizYonetim.Application.UtilityDebts.Commands.ImportUtilityDebts;
 using AkyildizYonetim.Application.UtilityDebts.Queries.GetUtilityDebtById;
 using AkyildizYonetim.Domain.Entities;
 using AkyildizYonetim.Infrastructure.Persistence;
@@ -25,6 +26,19 @@ public class UtilityDebtsController : ControllerBase
     {
         _mediator = mediator;
         _context = context;
+    }
+
+    [Authorize(Policy = "TenantWrite")]
+    [HttpPost("import")]
+    public async Task<IActionResult> ImportUtilityDebts(IFormFile file)
+    {
+        if (file == null || file.Length == 0)
+            return BadRequest("Dosya bulunamadı.");
+
+        using var stream = file.OpenReadStream();
+        var result = await _mediator.Send(new ImportUtilityDebtsFromExcelCommand { ExcelStream = stream });
+        
+        return result.IsSuccess ? Ok(new { count = result.Data }) : BadRequest(result.ErrorMessage);
     }
 
     [HttpGet]
