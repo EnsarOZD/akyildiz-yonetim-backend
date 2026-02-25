@@ -16,6 +16,7 @@ public record GetPaymentsQuery : IRequest<Result<List<PaymentDto>>>
     public DateTime? StartDate { get; init; }
     public DateTime? EndDate { get; init; }
     public DebtType? UtilityType { get; init; }
+    public bool ExcludeAdvanceUse { get; init; } = false;
 }
 
 public class GetPaymentsQueryHandler : IRequestHandler<GetPaymentsQuery, Result<List<PaymentDto>>>
@@ -76,6 +77,11 @@ public class GetPaymentsQueryHandler : IRequestHandler<GetPaymentsQuery, Result<
 
         if (request.EndDate.HasValue)
             query = query.Where(p => p.PaymentDate <= request.EndDate.Value);
+
+        if (request.ExcludeAdvanceUse)
+        {
+            query = query.Where(p => !(p.ReceiptNumber != null && p.ReceiptNumber.StartsWith("AVANS-")));
+        }
 
         var payments = await query
             .Include(p => p.Tenant)
