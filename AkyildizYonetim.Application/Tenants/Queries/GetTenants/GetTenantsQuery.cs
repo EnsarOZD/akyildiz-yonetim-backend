@@ -33,7 +33,8 @@ namespace AkyildizYonetim.Application.Tenants.Queries.GetTenants
                 .AsQueryable();
 
             // Veri İzolasyonu (RBAC)
-            if (!_currentUserService.IsAdmin && !_currentUserService.IsManager)
+            if (!_currentUserService.IsAdmin && !_currentUserService.IsManager && 
+                !_currentUserService.IsDataEntry && !_currentUserService.IsObserver)
             {
                 if (_currentUserService.TenantId.HasValue)
                 {

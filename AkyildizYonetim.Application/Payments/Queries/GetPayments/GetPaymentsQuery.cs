@@ -78,6 +78,8 @@ public class GetPaymentsQueryHandler : IRequestHandler<GetPaymentsQuery, Result<
             query = query.Where(p => p.PaymentDate <= request.EndDate.Value);
 
         var payments = await query
+            .Include(p => p.Tenant)
+            .Include(p => p.Owner)
             .OrderByDescending(p => p.PaymentDate)
             .Select(p => new PaymentDto
             {
@@ -91,7 +93,12 @@ public class GetPaymentsQueryHandler : IRequestHandler<GetPaymentsQuery, Result<
                 OwnerId = p.OwnerId,
                 TenantId = p.TenantId,
                 CreatedAt = p.CreatedAt,
-                UpdatedAt = p.UpdatedAt
+                UpdatedAt = p.UpdatedAt,
+                TenantName = p.Tenant != null ? (!string.IsNullOrEmpty(p.Tenant.CompanyName) ? p.Tenant.CompanyName : p.Tenant.ContactPersonName) : null,
+                OwnerName = p.Owner != null ? $"{p.Owner.FirstName} {p.Owner.LastName}".Trim() : null,
+                FlatInfo = p.Tenant != null && p.Tenant.Flats.Any() 
+                    ? string.Join(", ", p.Tenant.Flats.Select(f => $"Daire {f.Number}"))
+                    : (p.Owner != null && p.Owner.Flats.Any() ? string.Join(", ", p.Owner.Flats.Select(f => $"Daire {f.Number}")) : null)
             })
             .ToListAsync(cancellationToken);
 

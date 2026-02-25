@@ -14,6 +14,9 @@ public class PaymentDto
     public string? ReceiptNumber { get; set; }
     public Guid? OwnerId { get; set; }
     public Guid? TenantId { get; set; }
+    public string? TenantName { get; set; }
+    public string? OwnerName { get; set; }
+    public string? FlatInfo { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
-} 
+}

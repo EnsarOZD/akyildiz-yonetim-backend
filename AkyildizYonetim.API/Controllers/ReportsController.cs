@@ -18,6 +18,7 @@ public class ReportsController : ControllerBase
 
     [Authorize(Policy = "TenantRead")]
     [HttpGet("tenant/financial")]
+    [HttpGet("financial")]
     public async Task<IActionResult> GetTenantFinancialReport(
         [FromQuery] DateTime? startDate,
         [FromQuery] DateTime? endDate,

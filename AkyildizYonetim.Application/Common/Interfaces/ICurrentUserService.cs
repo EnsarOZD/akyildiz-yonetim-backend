@@ -10,4 +10,6 @@ public interface ICurrentUserService
     Guid? OwnerId { get; }
     bool IsAdmin { get; }
     bool IsManager { get; }
+    bool IsDataEntry { get; }
+    bool IsObserver { get; }
 }

@@ -39,4 +39,8 @@ public class CurrentUserService : ICurrentUserService
     public bool IsAdmin => Role?.Equals("Admin", StringComparison.OrdinalIgnoreCase) ?? false;
     
     public bool IsManager => Role?.Equals("Manager", StringComparison.OrdinalIgnoreCase) ?? false;
+
+    public bool IsDataEntry => Role?.Equals("DataEntry", StringComparison.OrdinalIgnoreCase) ?? false;
+
+    public bool IsObserver => Role?.Equals("Observer", StringComparison.OrdinalIgnoreCase) ?? false;
 }
