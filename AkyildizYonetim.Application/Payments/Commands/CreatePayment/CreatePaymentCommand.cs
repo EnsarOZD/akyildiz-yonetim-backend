@@ -23,11 +23,13 @@ public class CreatePaymentCommandHandler : IRequestHandler<CreatePaymentCommand,
 {
 	private readonly IApplicationDbContext _context;
 	private readonly IMapper _mapper;
+	private readonly IMediator _mediator;
 
-	public CreatePaymentCommandHandler(IApplicationDbContext context, IMapper mapper)
+	public CreatePaymentCommandHandler(IApplicationDbContext context, IMapper mapper, IMediator mediator)
 	{
 		_context = context;
 		_mapper = mapper;
+		_mediator = mediator;
 	}
 
 	public async Task<Result<PaymentDto>> Handle(CreatePaymentCommand request, CancellationToken cancellationToken)
@@ -48,6 +50,15 @@ public class CreatePaymentCommandHandler : IRequestHandler<CreatePaymentCommand,
 
 		_context.Payments.Add(payment);
 		await _context.SaveChangesAsync(cancellationToken);
+
+		// Trigger Notification if target is a Tenant and payment is confirmed
+		if (payment.TenantId.HasValue && request.Status == AkyildizYonetim.Domain.Entities.PaymentStatus.Completed)
+		{
+			await _mediator.Publish(new AkyildizYonetim.Domain.Events.PaymentConfirmedEvent(
+				payment.Id,
+				payment.TenantId.Value,
+				payment.Amount), cancellationToken);
+		}
 
 		var paymentDto = _mapper.Map<PaymentDto>(payment);
 		return Result<PaymentDto>.Success(paymentDto);

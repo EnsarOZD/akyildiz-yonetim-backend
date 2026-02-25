@@ -25,7 +25,12 @@ public record CreateUtilityDebtCommand : IRequest<Result<Guid>>
 public class CreateUtilityDebtCommandHandler : IRequestHandler<CreateUtilityDebtCommand, Result<Guid>>
 {
     private readonly IApplicationDbContext _context;
-    public CreateUtilityDebtCommandHandler(IApplicationDbContext context) { _context = context; }
+    private readonly IMediator _mediator;
+    public CreateUtilityDebtCommandHandler(IApplicationDbContext context, IMediator mediator) 
+    { 
+        _context = context; 
+        _mediator = mediator;
+    }
     public async Task<Result<Guid>> Handle(CreateUtilityDebtCommand request, CancellationToken ct)
 {
     var due = request.DueDate == default
@@ -42,10 +47,10 @@ public class CreateUtilityDebtCommandHandler : IRequestHandler<CreateUtilityDebt
         PeriodYear = request.PeriodYear,
         PeriodMonth = request.PeriodMonth,
         Amount = request.Amount,
-        RemainingAmount = remaining,      // ✅
+        RemainingAmount = remaining,
         Status = request.Status,
         PaidAmount = request.PaidAmount,
-        DueDate = due,                    // ✅
+        DueDate = due,
         PaidDate = request.PaidDate,
         Description = request.Description,
         TenantId = request.TenantId,
@@ -55,6 +60,17 @@ public class CreateUtilityDebtCommandHandler : IRequestHandler<CreateUtilityDebt
 
     _context.UtilityDebts.Add(debt);
     await _context.SaveChangesAsync(ct);
+
+    // Trigger Notification if target is a Tenant
+    if (debt.TenantId.HasValue)
+    {
+        await _mediator.Publish(new AkyildizYonetim.Domain.Events.DebtCreatedEvent(
+            debt.Id, 
+            debt.TenantId.Value, 
+            debt.Amount, 
+            debt.Type.ToString()), ct);
+    }
+
     return Result<Guid>.Success(debt.Id);
 }
 } 

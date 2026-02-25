@@ -43,7 +43,7 @@ public class GetTenantStatsQueryHandler : IRequestHandler<GetTenantStatsQuery, R
                 tenantsQuery = tenantsQuery.Where(t => t.Flats.Any(f => f.OwnerId == oid));
                 flatsQuery = flatsQuery.Where(f => f.OwnerId == oid);
                 debtsQuery = debtsQuery.Where(d => d.OwnerId == oid);
-                advanceQuery = advanceQuery.Where(a => a.TenantId != null && _context.Flats.Any(f => f.OwnerId == oid && f.TenantId == a.TenantId));
+                advanceQuery = advanceQuery.Where(a => _context.Flats.Any(f => f.OwnerId == oid && f.TenantId == a.TenantId));
             }
             else
             {

@@ -46,9 +46,9 @@ public class GetExpensesQueryHandler : IRequestHandler<GetExpensesQuery, Result<
         {
             var searchTerm = request.SearchTerm.ToLower();
             query = query.Where(e =>
-                e.Title.ToLower().Contains(searchTerm) ||
-                e.Description.ToLower().Contains(searchTerm) ||
-                e.ReceiptNumber.ToLower().Contains(searchTerm));
+                (e.Title != null && e.Title.ToLower().Contains(searchTerm)) ||
+                (e.Description != null && e.Description.ToLower().Contains(searchTerm)) ||
+                (e.ReceiptNumber != null && e.ReceiptNumber.ToLower().Contains(searchTerm)));
         }
 
         var expenses = await query

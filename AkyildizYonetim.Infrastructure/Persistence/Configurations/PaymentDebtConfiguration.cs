@@ -15,7 +15,7 @@ public class PaymentDebtConfiguration : IEntityTypeConfiguration<PaymentDebt>
                .IsRequired();
 
         // DB seviyesinde güvence: negatif ödeme olmasın
-        builder.HasCheckConstraint("CK_PaymentDebts_PaidAmount_Positive", "[PaidAmount] >= 0");
+        builder.ToTable(t => t.HasCheckConstraint("CK_PaymentDebts_PaidAmount_Positive", "[PaidAmount] >= 0"));
 
         // Sorgu performansı
         builder.HasIndex(pd => pd.PaymentId);

@@ -40,7 +40,7 @@ public class PaymentConfiguration : IEntityTypeConfiguration<Payment>
 
         
 
-        builder.HasCheckConstraint("CK_Payments_Amount_Positive", "[Amount] >= 0");
+        builder.ToTable(t => t.HasCheckConstraint("CK_Payments_Amount_Positive", "[Amount] >= 0"));
         
         // Indexes
         builder.HasIndex(p => p.PaymentDate);
