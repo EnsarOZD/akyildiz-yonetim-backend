@@ -240,7 +240,7 @@ public class AdvanceAccountsController : ControllerBase
         }
     }
 
-    [Authorize(Policy = "StaffOnly")]
+    [Authorize(Policy = "FinanceWrite")]
     [HttpPost("recalculate")]
     public async Task<IActionResult> RecalculateBalances()
     {
