@@ -80,10 +80,10 @@ public class GetPaymentsQueryHandler : IRequestHandler<GetPaymentsQuery, Result<
 
         if (request.ExcludeAdvanceUse)
         {
-            // Hem ReceiptNumber (AVANS-) hem de varsayılan açıklama ile filtrele
+            // TODO: Replace prefix-based detection with PaymentType = AdvanceUse or IsVirtual = true
             query = query.Where(p => 
-                !(p.ReceiptNumber != null && p.ReceiptNumber.StartsWith("AVANS-")) &&
-                !(p.Description != null && p.Description.Contains("Avans hesabından borç ödemesi")));
+                p.ReceiptNumber == null || 
+                !p.ReceiptNumber.StartsWith("AVANS-", StringComparison.OrdinalIgnoreCase));
         }
 
         var payments = await query
