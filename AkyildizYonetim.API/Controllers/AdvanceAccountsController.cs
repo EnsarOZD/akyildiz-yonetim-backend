@@ -2,6 +2,7 @@ using AkyildizYonetim.Application.AdvanceAccounts.Commands.CreateAdvanceAccount;
 using AkyildizYonetim.Application.AdvanceAccounts.Commands.DeleteAdvanceAccount;
 using AkyildizYonetim.Application.AdvanceAccounts.Commands.UpdateAdvanceAccount;
 using AkyildizYonetim.Application.AdvanceAccounts.Commands.UseAdvanceAccount;
+using AkyildizYonetim.Application.AdvanceAccounts.Commands.RecalculateBalances;
 using AkyildizYonetim.Application.AdvanceAccounts.Queries.GetAdvanceAccountById;
 using AkyildizYonetim.Application.AdvanceAccounts.Queries.GetAdvanceAccounts;
 using MediatR;
@@ -238,4 +239,28 @@ public class AdvanceAccountsController : ControllerBase
             return StatusCode(500, "Avans hesabı kullanılırken bir hata oluştu.");
         }
     }
-} 
+
+    [Authorize(Policy = "StaffOnly")]
+    [HttpPost("recalculate")]
+    public async Task<IActionResult> RecalculateBalances()
+    {
+        try
+        {
+            _logger.LogInformation("Avans hesapları yeniden hesaplanıyor...");
+            var result = await _mediator.Send(new RecalculateAdvanceBalancesCommand());
+            
+            if (result.IsSuccess)
+            {
+                _logger.LogInformation("Yeniden hesaplama tamamlandı. Güncellenen hesap: {Count}", result.Data?.UpdatedAccountsCount ?? 0);
+                return Ok(result.Data);
+            }
+
+            return BadRequest(result.ErrorMessage ?? string.Join(", ", result.Errors));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Yeniden hesaplama sırasında hata oluştu");
+            return StatusCode(500, "Yeniden hesaplama sırasında bir hata oluştu.");
+        }
+    }
+}
