@@ -44,9 +44,7 @@ public class GetDebtsSummaryQueryHandler
                 var firstDebt = group.First();
                 
                 string displayName = "Bilinmiyor";
-                string? apartmentNumber = firstDebt.Flat?.Code;
                 string entityType = "Unknown";
-
                 if (firstDebt.TenantId.HasValue && firstDebt.TenantId.Value == id)
                 {
                     var tenant = await _context.Tenants.FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
@@ -59,6 +57,13 @@ public class GetDebtsSummaryQueryHandler
                     displayName = owner != null ? $"{owner.FirstName} {owner.LastName}" : "Bilinmeyen Mal Sahibi";
                     entityType = "Owner";
                 }
+
+                // Collect all unique flat codes for this entity
+                var apartmentNumber = string.Join(", ", group
+                    .Select(d => d.Flat?.Code)
+                    .Where(code => !string.IsNullOrEmpty(code))
+                    .Distinct()
+                    .OrderBy(code => code));
 
                 var aidat = group.Where(d => d.Type == DebtType.Aidat).Sum(d => d.RemainingAmount);
                 var electricity = group.Where(d => d.Type == DebtType.Electricity).Sum(d => d.RemainingAmount);

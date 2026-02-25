@@ -71,4 +71,11 @@ public class AuthController : ControllerBase
             Role = role
         });
     }
-} 
+
+    [HttpPost("logout")]
+    [Authorize]
+    public IActionResult Logout()
+    {
+        return Ok();
+    }
+}
