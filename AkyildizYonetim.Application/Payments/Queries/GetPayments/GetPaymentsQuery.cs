@@ -80,7 +80,10 @@ public class GetPaymentsQueryHandler : IRequestHandler<GetPaymentsQuery, Result<
 
         if (request.ExcludeAdvanceUse)
         {
-            query = query.Where(p => !(p.ReceiptNumber != null && p.ReceiptNumber.StartsWith("AVANS-")));
+            // Hem ReceiptNumber (AVANS-) hem de varsayılan açıklama ile filtrele
+            query = query.Where(p => 
+                !(p.ReceiptNumber != null && p.ReceiptNumber.StartsWith("AVANS-")) &&
+                !(p.Description != null && p.Description.Contains("Avans hesabından borç ödemesi")));
         }
 
         var payments = await query

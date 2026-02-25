@@ -47,7 +47,8 @@ public class PaymentsController : ControllerBase
         [FromQuery] string? ownerId,
         [FromQuery] string? tenantId,
         [FromQuery] DateTime? startDate,
-        [FromQuery] DateTime? endDate)
+        [FromQuery] DateTime? endDate,
+        [FromQuery] bool excludeAdvanceUse = false)
     {
         try
         {
@@ -68,7 +69,8 @@ public class PaymentsController : ControllerBase
                 OwnerId = ownerGuid,
                 TenantId = tenantGuid,
                 StartDate = startDate,
-                EndDate = endDate
+                EndDate = endDate,
+                ExcludeAdvanceUse = excludeAdvanceUse
             });
 
             if (result.IsSuccess)
