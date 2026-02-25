@@ -80,40 +80,43 @@ public class GetPaymentsQueryHandler : IRequestHandler<GetPaymentsQuery, Result<
 
         if (request.ExcludeAdvanceUse)
         {
-            // TODO: Replace prefix-based detection with PaymentType = AdvanceUse or IsVirtual = true
+            // Simplified for SQL translation compatibility
             query = query.Where(p => 
                 p.ReceiptNumber == null || 
-                !p.ReceiptNumber.StartsWith("AVANS-", StringComparison.OrdinalIgnoreCase));
+                !p.ReceiptNumber.StartsWith("AVANS-"));
         }
 
-        var payments = await query
+        var paymentsByQuery = await query
             .Include(p => p.Tenant)
+                .ThenInclude(t => t.Flats)
             .Include(p => p.Owner)
+                .ThenInclude(o => o.Flats)
             .Include(p => p.PaymentDebts)
                 .ThenInclude(pd => pd.Debt)
             .OrderByDescending(p => p.PaymentDate)
-            .Select(p => new PaymentDto
-            {
-                Id = p.Id,
-                Amount = p.Amount,
-                Type = p.Type,
-                Status = p.Status,
-                PaymentDate = p.PaymentDate,
-                Description = p.Description,
-                ReceiptNumber = p.ReceiptNumber,
-                OwnerId = p.OwnerId,
-                TenantId = p.TenantId,
-                CreatedAt = p.CreatedAt,
-                UpdatedAt = p.UpdatedAt,
-                TenantName = p.Tenant != null ? (!string.IsNullOrEmpty(p.Tenant.CompanyName) ? p.Tenant.CompanyName : p.Tenant.ContactPersonName) : null,
-                OwnerName = p.Owner != null ? $"{p.Owner.FirstName} {p.Owner.LastName}".Trim() : null,
-                FlatInfo = p.Tenant != null && p.Tenant.Flats.Any() 
-                    ? string.Join(", ", p.Tenant.Flats.Select(f => $"Daire {f.Number}"))
-                    : (p.Owner != null && p.Owner.Flats.Any() ? string.Join(", ", p.Owner.Flats.Select(f => $"Daire {f.Number}")) : null),
-                PeriodYear = p.PaymentDebts.Select(pd => pd.Debt.PeriodYear).FirstOrDefault(),
-                PeriodMonth = p.PaymentDebts.Select(pd => pd.Debt.PeriodMonth).FirstOrDefault()
-            })
             .ToListAsync(cancellationToken);
+
+        var payments = paymentsByQuery.Select(p => new PaymentDto
+        {
+            Id = p.Id,
+            Amount = p.Amount,
+            Type = p.Type,
+            Status = p.Status,
+            PaymentDate = p.PaymentDate,
+            Description = p.Description,
+            ReceiptNumber = p.ReceiptNumber,
+            OwnerId = p.OwnerId,
+            TenantId = p.TenantId,
+            CreatedAt = p.CreatedAt,
+            UpdatedAt = p.UpdatedAt,
+            TenantName = p.Tenant != null ? (!string.IsNullOrEmpty(p.Tenant.CompanyName) ? p.Tenant.CompanyName : p.Tenant.ContactPersonName) : null,
+            OwnerName = p.Owner != null ? $"{p.Owner.FirstName} {p.Owner.LastName}".Trim() : null,
+            FlatInfo = p.Tenant != null && p.Tenant.Flats.Any() 
+                ? string.Join(", ", p.Tenant.Flats.Select(f => $"Daire {f.Number}"))
+                : (p.Owner != null && p.Owner.Flats.Any() ? string.Join(", ", p.Owner.Flats.Select(f => $"Daire {f.Number}")) : null),
+            PeriodYear = p.PaymentDebts.Select(pd => pd.Debt.PeriodYear).FirstOrDefault(),
+            PeriodMonth = p.PaymentDebts.Select(pd => pd.Debt.PeriodMonth).FirstOrDefault()
+        }).ToList();
 
         return Result<List<PaymentDto>>.Success(payments);
     }
