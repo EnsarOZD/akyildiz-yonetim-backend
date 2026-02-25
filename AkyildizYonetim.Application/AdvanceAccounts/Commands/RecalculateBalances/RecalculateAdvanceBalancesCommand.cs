@@ -57,10 +57,15 @@ public class RecalculateAdvanceBalancesCommandHandler : IRequestHandler<Recalcul
                 .SumAsync(p => p.Amount, cancellationToken);
 
             // 2. Bu kiracıya ait tüm BORÇ EŞLEŞTİRMELERİ (dağıtılan tutarları) topla
-            // Kriter: Ödeme silinmemiş OLMALI, PaymentDebt silinmemiş OLMALI
+            // Kriter: Ödeme silinmemiş OLMALI, PaymentDebt silinmemiş OLMALI ve Bağlı Borç silinmemiş OLMALI
             var totalAllocated = await _context.PaymentDebts
                 .Include(pd => pd.Payment)
-                .Where(pd => pd.Payment.TenantId == tenant.Id && !pd.IsDeleted && !pd.Payment.IsDeleted)
+                .Include(pd => pd.Debt)
+                .Where(pd => pd.Payment.TenantId == tenant.Id 
+                             && !pd.IsDeleted 
+                             && !pd.Payment.IsDeleted 
+                             && pd.Debt != null 
+                             && !pd.Debt.IsDeleted)
                 .SumAsync(pd => pd.PaidAmount, cancellationToken);
 
             // Olması gereken bakiye = Toplam Nakit Girişi - Borçlara Dağıtılan Toplam Tutar
