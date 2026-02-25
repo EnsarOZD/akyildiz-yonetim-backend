@@ -43,7 +43,7 @@ public class RecalculateAdvanceBalancesCommandHandler : IRequestHandler<Recalcul
         // 1. Tüm kiracıları (veya sadece avans hesabı olanları) alalım
         // Veri tutarlılığı için tüm kiracıları kontrol etmek daha güvenli (hesabı olmayan ama bakiyesi birikenler olabilir)
         var tenants = await _context.Tenants
-            .Include(t => t.AdvanceAccount)
+            .Include(t => t.AdvanceAccounts)
             .Where(t => !t.IsDeleted)
             .ToListAsync(cancellationToken);
 
@@ -67,13 +67,14 @@ public class RecalculateAdvanceBalancesCommandHandler : IRequestHandler<Recalcul
             var calculatedBalance = totalPayments - totalAllocated;
             if (calculatedBalance < 0) calculatedBalance = 0; // Negatif bakiye mantıken olmamalı
 
-            var currentBalance = tenant.AdvanceAccount?.Balance ?? 0;
+            var advanceAccount = tenant.AdvanceAccounts.FirstOrDefault(aa => !aa.IsDeleted);
+            var currentBalance = advanceAccount?.Balance ?? 0;
 
             if (Math.Abs(currentBalance - calculatedBalance) > 0.001m)
             {
-                if (tenant.AdvanceAccount == null)
+                if (advanceAccount == null)
                 {
-                    tenant.AdvanceAccount = new AdvanceAccount
+                    advanceAccount = new AdvanceAccount
                     {
                         Id = Guid.NewGuid(),
                         TenantId = tenant.Id,
@@ -81,12 +82,12 @@ public class RecalculateAdvanceBalancesCommandHandler : IRequestHandler<Recalcul
                         CreatedAt = DateTime.UtcNow,
                         IsActive = true
                     };
-                    _context.AdvanceAccounts.Add(tenant.AdvanceAccount);
+                    _context.AdvanceAccounts.Add(advanceAccount);
                 }
                 else
                 {
-                    tenant.AdvanceAccount.Balance = calculatedBalance;
-                    tenant.AdvanceAccount.UpdatedAt = DateTime.UtcNow;
+                    advanceAccount.Balance = calculatedBalance;
+                    advanceAccount.UpdatedAt = DateTime.UtcNow;
                 }
 
                 result.UpdatedAccountsCount++;
