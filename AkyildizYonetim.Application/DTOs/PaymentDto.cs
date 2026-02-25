@@ -17,6 +17,8 @@ public class PaymentDto
     public string? TenantName { get; set; }
     public string? OwnerName { get; set; }
     public string? FlatInfo { get; set; }
+    public int? PeriodYear { get; set; }
+    public int? PeriodMonth { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
 }

@@ -80,6 +80,8 @@ public class GetPaymentsQueryHandler : IRequestHandler<GetPaymentsQuery, Result<
         var payments = await query
             .Include(p => p.Tenant)
             .Include(p => p.Owner)
+            .Include(p => p.PaymentDebts)
+                .ThenInclude(pd => pd.Debt)
             .OrderByDescending(p => p.PaymentDate)
             .Select(p => new PaymentDto
             {
@@ -98,7 +100,9 @@ public class GetPaymentsQueryHandler : IRequestHandler<GetPaymentsQuery, Result<
                 OwnerName = p.Owner != null ? $"{p.Owner.FirstName} {p.Owner.LastName}".Trim() : null,
                 FlatInfo = p.Tenant != null && p.Tenant.Flats.Any() 
                     ? string.Join(", ", p.Tenant.Flats.Select(f => $"Daire {f.Number}"))
-                    : (p.Owner != null && p.Owner.Flats.Any() ? string.Join(", ", p.Owner.Flats.Select(f => $"Daire {f.Number}")) : null)
+                    : (p.Owner != null && p.Owner.Flats.Any() ? string.Join(", ", p.Owner.Flats.Select(f => $"Daire {f.Number}")) : null),
+                PeriodYear = p.PaymentDebts.Select(pd => pd.Debt.PeriodYear).FirstOrDefault(),
+                PeriodMonth = p.PaymentDebts.Select(pd => pd.Debt.PeriodMonth).FirstOrDefault()
             })
             .ToListAsync(cancellationToken);
 
