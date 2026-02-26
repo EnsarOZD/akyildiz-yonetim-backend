@@ -102,7 +102,7 @@ public class NotificationsController : ControllerBase
         return result.IsSuccess ? Ok() : BadRequest(result.ErrorMessage);
     }
 
-    [Authorize(Roles = "Admin,Manager")]
+    [Authorize(Roles = "admin,manager")]
     [HttpPost("broadcast")]
     public async Task<IActionResult> PostAnnouncement([FromBody] AkyildizYonetim.Application.Notifications.Commands.PostAnnouncement.PostAnnouncementCommand command)
     {

@@ -57,7 +57,7 @@ public class TenantsController : ControllerBase
 	}
 
 	// Body doğrudan CreateTenantCommand
-	[Authorize(Roles = "Admin")]
+	[Authorize(Roles = "admin")]
 	[HttpPost]
 	[ProducesResponseType(typeof(object), 201)]
 	[ProducesResponseType(typeof(object), 400)]
@@ -72,7 +72,7 @@ public class TenantsController : ControllerBase
 	}
 
 	// Body doğrudan UpdateTenantCommand
-	[Authorize(Roles = "Admin")]
+	[Authorize(Roles = "admin")]
 	[HttpPut("{id:guid}")]
 	[ProducesResponseType(204)]
 	[ProducesResponseType(typeof(object), 400)]
@@ -88,7 +88,7 @@ public class TenantsController : ControllerBase
 		return result.IsSuccess ? NoContent() : BadRequest(result.ErrorMessage ?? string.Join(", ", result.Errors));
 	}
 
-	[Authorize(Roles = "Admin")]
+	[Authorize(Roles = "admin")]
 	[HttpDelete("{id:guid}")]
 	[ProducesResponseType(204)]
 	[ProducesResponseType(typeof(object), 404)]
