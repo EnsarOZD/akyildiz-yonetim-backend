@@ -7,7 +7,7 @@ COPY ["AkyildizYonetim.API/AkyildizYonetim.API.csproj", "AkyildizYonetim.API/"]
 COPY ["AkyildizYonetim.Application/AkyildizYonetim.Application.csproj", "AkyildizYonetim.Application/"]
 COPY ["AkyildizYonetim.Domain/AkyildizYonetim.Domain.csproj", "AkyildizYonetim.Domain/"]
 COPY ["AkyildizYonetim.Infrastructure/AkyildizYonetim.Infrastructure.csproj", "AkyildizYonetim.Infrastructure/"]
-COPY ["AkyildizYonetim.Persistence/AkyildizYonetim.Persistence.csproj", "AkyildizYonetim.Persistence/"]
+
 
 # Restore dependencies
 RUN dotnet restore "AkyildizYonetim.API/AkyildizYonetim.API.csproj"
