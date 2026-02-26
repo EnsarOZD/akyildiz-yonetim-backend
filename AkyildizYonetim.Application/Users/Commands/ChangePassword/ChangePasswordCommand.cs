@@ -30,7 +30,12 @@ public class ChangePasswordCommandHandler : IRequestHandler<ChangePasswordComman
             return Result.Failure("Kullanıcı bulunamadı.");
         
         if (!_passwordHasher.VerifyPassword(request.OldPassword, user.PasswordHash))
-            return Result.Failure("Mevcut şifre hatalı.");
+        {
+            if (!_passwordHasher.VerifyLegacyPassword(request.OldPassword, user.PasswordHash))
+            {
+                return Result.Failure("Mevcut şifre hatalı.");
+            }
+        }
             
         user.PasswordHash = _passwordHasher.HashPassword(request.NewPassword);
         // user.RequiresPasswordReset = false;

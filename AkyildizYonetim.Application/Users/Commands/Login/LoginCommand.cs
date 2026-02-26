@@ -45,8 +45,22 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, Result<LoginRes
         
         if (!_passwordHasher.VerifyPassword(request.Password, user.PasswordHash))
         {
-            _logger.LogWarning("Password mismatch for user: {Email}", request.Email);
-            return Result<LoginResultDto>.Failure("Şifre hatalı.");
+            // Fallback for legacy SHA-256 hashes
+            if (_passwordHasher.VerifyLegacyPassword(request.Password, user.PasswordHash))
+            {
+                _logger.LogInformation("Legacy password verified for user: {Email}. Upgrading to BCrypt.", request.Email);
+                
+                // Upgrade hash to BCrypt
+                user.PasswordHash = _passwordHasher.HashPassword(request.Password);
+                user.UpdatedAt = DateTime.UtcNow;
+                
+                await _context.SaveChangesAsync(cancellationToken);
+            }
+            else
+            {
+                _logger.LogWarning("Password mismatch for user: {Email}", request.Email);
+                return Result<LoginResultDto>.Failure("Şifre hatalı.");
+            }
         }
         
         if (!user.IsActive)

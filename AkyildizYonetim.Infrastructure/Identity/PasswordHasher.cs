@@ -18,8 +18,19 @@ public class PasswordHasher : IPasswordHasher
         }
         catch (Exception)
         {
-            // Eski SHA-256 hash'leri veya hatalı formatlar için geçici fallback veya safe failure
             return false;
         }
+    }
+
+    public bool VerifyLegacyPassword(string password, string hashedPassword)
+    {
+        if (string.IsNullOrEmpty(hashedPassword)) return false;
+
+        using var sha256 = System.Security.Cryptography.SHA256.Create();
+        var bytes = System.Text.Encoding.UTF8.GetBytes(password);
+        var hash = sha256.ComputeHash(bytes);
+        var base64Hash = Convert.ToBase64String(hash);
+
+        return base64Hash == hashedPassword;
     }
 }
