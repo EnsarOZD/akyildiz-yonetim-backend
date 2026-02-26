@@ -9,6 +9,8 @@ public class PaymentDto
     public decimal Amount { get; set; }
     public PaymentType Type { get; set; }
     public PaymentStatus Status { get; set; }
+    public PaymentMethod Method { get; set; }
+    public string? BankName { get; set; }
     public DateTime PaymentDate { get; set; }
     public string? Description { get; set; }
     public string? ReceiptNumber { get; set; }

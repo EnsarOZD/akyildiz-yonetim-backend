@@ -12,6 +12,8 @@ public record CreatePaymentCommand : IRequest<Result<PaymentDto>>
 	public decimal Amount { get; init; }
 	public PaymentType Type { get; init; }
 	public PaymentStatus Status { get; init; }
+	public PaymentMethod Method { get; init; }
+	public string? BankName { get; init; }
 	public DateTime PaymentDate { get; init; }
 	public string? Description { get; init; }
 	public string? ReceiptNumber { get; init; }
@@ -42,6 +44,8 @@ public class CreatePaymentCommandHandler : IRequestHandler<CreatePaymentCommand,
 			Amount = request.Amount,
 			Type = request.Type,
 			Status = request.Status,
+			Method = request.Method,
+			BankName = request.BankName,
 			PaymentDate = request.PaymentDate,
 			Description = request.Description,
 			ReceiptNumber = request.ReceiptNumber,
