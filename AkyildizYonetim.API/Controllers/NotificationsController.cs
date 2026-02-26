@@ -101,6 +101,14 @@ public class NotificationsController : ControllerBase
 
         return result.IsSuccess ? Ok() : BadRequest(result.ErrorMessage);
     }
+
+    [Authorize(Roles = "Admin,Manager")]
+    [HttpPost("broadcast")]
+    public async Task<IActionResult> PostAnnouncement([FromBody] AkyildizYonetim.Application.Notifications.Commands.PostAnnouncement.PostAnnouncementCommand command)
+    {
+        var result = await _mediator.Send(command);
+        return result.IsSuccess ? Ok() : BadRequest(result.ErrorMessage);
+    }
 }
 
 public class PushSubscriptionRequest

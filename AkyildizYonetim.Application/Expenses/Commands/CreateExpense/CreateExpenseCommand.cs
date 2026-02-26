@@ -19,10 +19,12 @@ public record CreateExpenseCommand : IRequest<Result<Guid>>
 public class CreateExpenseCommandHandler : IRequestHandler<CreateExpenseCommand, Result<Guid>>
 {
     private readonly IApplicationDbContext _context;
+    private readonly IMediator _mediator;
 
-    public CreateExpenseCommandHandler(IApplicationDbContext context)
+    public CreateExpenseCommandHandler(IApplicationDbContext context, IMediator mediator)
     {
         _context = context;
+        _mediator = mediator;
     }
 
     public async Task<Result<Guid>> Handle(CreateExpenseCommand request, CancellationToken cancellationToken)
@@ -43,6 +45,12 @@ public class CreateExpenseCommandHandler : IRequestHandler<CreateExpenseCommand,
         _context.Expenses.Add(expense);
         await _context.SaveChangesAsync(cancellationToken);
 
+        await _mediator.Publish(new AkyildizYonetim.Domain.Events.ExpenseCreatedEvent(
+            expense.Id,
+            expense.Title,
+            expense.Amount,
+            expense.Description), cancellationToken);
+
         return Result<Guid>.Success(expense.Id);
     }
-} 
+}
