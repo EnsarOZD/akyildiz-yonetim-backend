@@ -17,25 +17,25 @@ public record ChangePasswordCommand : IRequest<Result>
 public class ChangePasswordCommandHandler : IRequestHandler<ChangePasswordCommand, Result>
 {
     private readonly IApplicationDbContext _context;
-    public ChangePasswordCommandHandler(IApplicationDbContext context) { _context = context; }
+    private readonly IPasswordHasher _passwordHasher;
+    public ChangePasswordCommandHandler(IApplicationDbContext context, IPasswordHasher passwordHasher) 
+    { 
+        _context = context; 
+        _passwordHasher = passwordHasher;
+    }
     public async Task<Result> Handle(ChangePasswordCommand request, CancellationToken cancellationToken)
     {
         var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == request.UserId && !u.IsDeleted, cancellationToken);
         if (user == null)
             return Result.Failure("Kullanıcı bulunamadı.");
-        if (user.PasswordHash != HashPassword(request.OldPassword))
+        
+        if (!_passwordHasher.VerifyPassword(request.OldPassword, user.PasswordHash))
             return Result.Failure("Mevcut şifre hatalı.");
-        user.PasswordHash = HashPassword(request.NewPassword);
+            
+        user.PasswordHash = _passwordHasher.HashPassword(request.NewPassword);
         // user.RequiresPasswordReset = false;
         user.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync(cancellationToken);
         return Result.Success();
     }
-    private string HashPassword(string password)
-    {
-        using var sha256 = SHA256.Create();
-        var bytes = Encoding.UTF8.GetBytes(password);
-        var hash = sha256.ComputeHash(bytes);
-        return Convert.ToBase64String(hash);
-    }
-} 
+}

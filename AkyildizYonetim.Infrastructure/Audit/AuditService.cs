@@ -9,12 +9,12 @@ namespace AkyildizYonetim.Infrastructure.Audit;
 
 public class AuditService : IAuditService
 {
-    private readonly ApplicationDbContext _context;
+    private readonly IApplicationDbContext _context;
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly ILogger<AuditService> _logger;
 
     public AuditService(
-        ApplicationDbContext context,
+        IApplicationDbContext context,
         IHttpContextAccessor httpContextAccessor,
         ILogger<AuditService> logger)
     {

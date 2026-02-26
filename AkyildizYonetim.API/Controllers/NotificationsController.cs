@@ -1,8 +1,10 @@
-using AkyildizYonetim.Application.Common.Interfaces;
-using AkyildizYonetim.Domain.Entities;
+using AkyildizYonetim.Application.Notifications.Commands.MarkAllAsRead;
+using AkyildizYonetim.Application.Notifications.Commands.MarkAsRead;
+using AkyildizYonetim.Application.Notifications.Commands.PushSubscription;
+using AkyildizYonetim.Application.Notifications.Queries.GetNotifications;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using System.Security.Claims;
 
@@ -13,12 +15,12 @@ namespace AkyildizYonetim.API.Controllers;
 [Route("api/[controller]")]
 public class NotificationsController : ControllerBase
 {
-    private readonly IApplicationDbContext _context;
+    private readonly IMediator _mediator;
     private readonly IConfiguration _configuration;
 
-    public NotificationsController(IApplicationDbContext context, IConfiguration configuration)
+    public NotificationsController(IMediator mediator, IConfiguration configuration)
     {
-        _context = context;
+        _mediator = mediator;
         _configuration = configuration;
     }
 
@@ -29,32 +31,15 @@ public class NotificationsController : ControllerBase
         if (string.IsNullOrEmpty(userIdStr) || !Guid.TryParse(userIdStr, out var userId))
             return Unauthorized();
 
-        // Enforce max take
-        if (take > 50) take = 50;
-
-        var query = _context.Notifications
-            .Where(n => n.UserId == userId);
-
-        if (unreadOnly)
+        var result = await _mediator.Send(new GetNotificationsQuery
         {
-            query = query.Where(n => !n.IsRead);
-        }
-
-        var totalCount = await query.CountAsync();
-        var unreadCount = await _context.Notifications.CountAsync(n => n.UserId == userId && !n.IsRead);
-
-        var items = await query
-            .OrderByDescending(n => n.CreatedAt)
-            .Skip(skip)
-            .Take(take)
-            .ToListAsync();
-
-        return Ok(new
-        {
-            Items = items,
-            TotalCount = totalCount,
-            UnreadCount = unreadCount
+            UserId = userId,
+            UnreadOnly = unreadOnly,
+            Take = take,
+            Skip = skip
         });
+
+        return Ok(result);
     }
 
     [HttpPost("{id}/read")]
@@ -64,19 +49,9 @@ public class NotificationsController : ControllerBase
         if (string.IsNullOrEmpty(userIdStr) || !Guid.TryParse(userIdStr, out var userId))
             return Unauthorized();
 
-        var notification = await _context.Notifications
-            .FirstOrDefaultAsync(n => n.Id == id && n.UserId == userId);
+        var result = await _mediator.Send(new MarkAsReadCommand { Id = id, UserId = userId });
 
-        if (notification == null)
-            return NotFound();
-
-        if (!notification.IsRead)
-        {
-            notification.IsRead = true;
-            await _context.SaveChangesAsync(CancellationToken.None);
-        }
-
-        return Ok();
+        return result.IsSuccess ? Ok() : (result.ErrorMessage == "Bildirim bulunamadı." ? NotFound() : BadRequest(result.ErrorMessage));
     }
 
     [HttpPost("read-all")]
@@ -86,21 +61,9 @@ public class NotificationsController : ControllerBase
         if (string.IsNullOrEmpty(userIdStr) || !Guid.TryParse(userIdStr, out var userId))
             return Unauthorized();
 
-        var unreadNotifications = await _context.Notifications
-            .Where(n => n.UserId == userId && !n.IsRead)
-            .ToListAsync();
+        var result = await _mediator.Send(new MarkAllAsReadCommand { UserId = userId });
 
-        foreach (var notification in unreadNotifications)
-        {
-            notification.IsRead = true;
-        }
-
-        if (unreadNotifications.Any())
-        {
-            await _context.SaveChangesAsync(CancellationToken.None);
-        }
-
-        return NoContent();
+        return result.IsSuccess ? NoContent() : BadRequest(result.ErrorMessage);
     }
 
     [HttpGet("vapid-public-key")]
@@ -120,47 +83,23 @@ public class NotificationsController : ControllerBase
         if (string.IsNullOrEmpty(userIdStr) || !Guid.TryParse(userIdStr, out var userId))
             return Unauthorized();
 
-        // Upsert logic: Check if subscription already exists for this endpoint
-        var existing = await _context.UserPushSubscriptions
-            .FirstOrDefaultAsync(s => s.Endpoint == request.Endpoint);
-
-        if (existing != null)
+        var result = await _mediator.Send(new SubscribePushCommand
         {
-            existing.P256dh = request.P256dh;
-            existing.Auth = request.Auth;
-            existing.UserId = userId; // Re-bind to current user if it was bound to someone else
-            existing.UpdatedAt = DateTime.UtcNow;
-        }
-        else
-        {
-            var subscription = new UserPushSubscription
-            {
-                UserId = userId,
-                Endpoint = request.Endpoint,
-                P256dh = request.P256dh,
-                Auth = request.Auth,
-                CreatedAt = DateTime.UtcNow
-            };
-            _context.UserPushSubscriptions.Add(subscription);
-        }
+            UserId = userId,
+            Endpoint = request.Endpoint,
+            P256dh = request.P256dh,
+            Auth = request.Auth
+        });
 
-        await _context.SaveChangesAsync(CancellationToken.None);
-        return Ok();
+        return result.IsSuccess ? Ok() : BadRequest(result.ErrorMessage);
     }
 
     [HttpDelete("unsubscribe")]
     public async Task<IActionResult> Unsubscribe([FromQuery] string endpoint)
     {
-        var subscription = await _context.UserPushSubscriptions
-            .FirstOrDefaultAsync(s => s.Endpoint == endpoint);
+        var result = await _mediator.Send(new UnsubscribePushCommand { Endpoint = endpoint });
 
-        if (subscription != null)
-        {
-            _context.UserPushSubscriptions.Remove(subscription);
-            await _context.SaveChangesAsync(CancellationToken.None);
-        }
-
-        return Ok();
+        return result.IsSuccess ? Ok() : BadRequest(result.ErrorMessage);
     }
 }
 

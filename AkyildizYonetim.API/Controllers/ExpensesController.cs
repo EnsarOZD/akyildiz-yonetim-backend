@@ -67,90 +67,27 @@ public class ExpensesController : ControllerBase
 
     [Authorize(Policy = "FinanceWrite")]
     [HttpPost]
-    public async Task<IActionResult> CreateExpense([FromBody] JsonElement jsonElement)
+    public async Task<IActionResult> CreateExpense([FromBody] CreateExpenseCommand command)
     {
-        // ... (remaining methods)
-        try
-        {
-            Console.WriteLine($"🔍 Raw JSON: {jsonElement}");
-            
-            // JSON'dan manuel olarak command oluştur
-            var command = new CreateExpenseCommand
-            {
-                Title = jsonElement.GetProperty("title").GetString() ?? string.Empty,
-                Amount = jsonElement.GetProperty("amount").GetDecimal(),
-                Type = Enum.Parse<ExpenseType>(jsonElement.GetProperty("type").GetString() ?? "Other"),
-                ExpenseDate = jsonElement.GetProperty("expenseDate").GetDateTime(),
-                Description = jsonElement.TryGetProperty("description", out var desc) ? desc.GetString() : null
-            };
-
-            Console.WriteLine($"🔍 Backend'e gelen veri: Title={command.Title}, Amount={command.Amount}, Type={command.Type}, Date={command.ExpenseDate}");
-            
-            var result = await _mediator.Send(command);
-            
-            if (!result.IsSuccess)
-            {
-                Console.WriteLine($"❌ Hata: {result.ErrorMessage}");
-                if (result.Errors != null && result.Errors.Any())
-                {
-                    Console.WriteLine($"❌ Detaylar: {string.Join(", ", result.Errors)}");
-                }
-                return BadRequest(result.ErrorMessage ?? string.Join(", ", result.Errors));
-            }
-            
-            Console.WriteLine($"✅ Başarılı! ID: {result.Data}");
-            return CreatedAtAction(nameof(GetExpenseById), new { id = result.Data }, result.Data);
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"❌ JSON parse hatası: {ex.Message}");
-            Console.WriteLine($"❌ Stack trace: {ex.StackTrace}");
-            return BadRequest($"JSON parse hatası: {ex.Message}");
-        }
+        var result = await _mediator.Send(command);
+        
+        return result.IsSuccess
+            ? CreatedAtAction(nameof(GetExpenseById), new { id = result.Data }, result.Data)
+            : BadRequest(result.ErrorMessage ?? string.Join(", ", result.Errors));
     }
 
     [Authorize(Policy = "FinanceWrite")]
     [HttpPut("{id}")]
-    public async Task<IActionResult> UpdateExpense(Guid id, [FromBody] JsonElement jsonElement)
+    public async Task<IActionResult> UpdateExpense(Guid id, [FromBody] UpdateExpenseCommand command)
     {
-        try
-        {
-            Console.WriteLine($"🔍 Update Raw JSON: {jsonElement}");
-            
-            // JSON'dan manuel olarak command oluştur
-            var command = new UpdateExpenseCommand
-            {
-                Id = id,
-                Title = jsonElement.GetProperty("title").GetString() ?? string.Empty,
-                Amount = jsonElement.GetProperty("amount").GetDecimal(),
-                Type = Enum.Parse<ExpenseType>(jsonElement.GetProperty("type").GetString() ?? "Other"),
-                ExpenseDate = jsonElement.GetProperty("expenseDate").GetDateTime(),
-                Description = jsonElement.TryGetProperty("description", out var desc) ? desc.GetString() : null
-            };
+        if (id != command.Id)
+            return BadRequest("Id uyuşmuyor.");
 
-            Console.WriteLine($"🔍 Update Backend'e gelen veri: ID={command.Id}, Title={command.Title}, Amount={command.Amount}, Type={command.Type}, Date={command.ExpenseDate}");
-            
-            var result = await _mediator.Send(command);
-            
-            if (!result.IsSuccess)
-            {
-                Console.WriteLine($"❌ Update Hata: {result.ErrorMessage}");
-                if (result.Errors != null && result.Errors.Any())
-                {
-                    Console.WriteLine($"❌ Update Detaylar: {string.Join(", ", result.Errors)}");
-                }
-                return BadRequest(result.ErrorMessage ?? string.Join(", ", result.Errors));
-            }
-            
-            Console.WriteLine($"✅ Update Başarılı! ID: {id}");
-            return NoContent();
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"❌ Update JSON parse hatası: {ex.Message}");
-            Console.WriteLine($"❌ Update Stack trace: {ex.StackTrace}");
-            return BadRequest($"JSON parse hatası: {ex.Message}");
-        }
+        var result = await _mediator.Send(command);
+        
+        return result.IsSuccess 
+            ? NoContent() 
+            : BadRequest(result.ErrorMessage ?? string.Join(", ", result.Errors));
     }
 
     [Authorize(Policy = "FinanceWrite")]

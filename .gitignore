@@ -399,3 +399,18 @@ FodyWeavers.xsd
 
 # JetBrains Rider
 *.sln.iml
+
+# Custom ignore for AkyildizYonetim
+appsettings.Production.json
+*.txt
+publish/
+dist/
+*.zip
+*.sql
+*.json
+!appsettings.json
+!appsettings.Development.json
+!package.json
+!tsconfig.json
+!*.csproj
+!*.sln

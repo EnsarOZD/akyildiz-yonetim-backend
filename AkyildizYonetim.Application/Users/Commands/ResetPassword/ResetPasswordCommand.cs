@@ -17,9 +17,12 @@ public record ResetPasswordCommand : IRequest<Result>
 public class ResetPasswordCommandHandler : IRequestHandler<ResetPasswordCommand, Result>
 {
     private readonly IApplicationDbContext _context;
-    public ResetPasswordCommandHandler(IApplicationDbContext context)
+    private readonly IPasswordHasher _passwordHasher;
+
+    public ResetPasswordCommandHandler(IApplicationDbContext context, IPasswordHasher passwordHasher)
     {
         _context = context;
+        _passwordHasher = passwordHasher;
     }
 
     public async Task<Result> Handle(ResetPasswordCommand request, CancellationToken cancellationToken)
@@ -35,7 +38,7 @@ public class ResetPasswordCommandHandler : IRequestHandler<ResetPasswordCommand,
         if (user.ResetTokenExpires < DateTime.UtcNow)
             return Result.Failure("Şifre sıfırlama bağlantısının süresi dolmuş.");
 
-        user.PasswordHash = HashPassword(request.NewPassword);
+        user.PasswordHash = _passwordHasher.HashPassword(request.NewPassword);
         user.PasswordResetToken = null;
         user.ResetTokenExpires = null;
         user.UpdatedAt = DateTime.UtcNow;
@@ -43,12 +46,4 @@ public class ResetPasswordCommandHandler : IRequestHandler<ResetPasswordCommand,
         await _context.SaveChangesAsync(cancellationToken);
         return Result.Success();
     }
-
-    private string HashPassword(string password)
-    {
-        using var sha256 = SHA256.Create();
-        var bytes = Encoding.UTF8.GetBytes(password);
-        var hash = sha256.ComputeHash(bytes);
-        return Convert.ToBase64String(hash);
-    }
-} 
+}

@@ -19,12 +19,14 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, Result<LoginRes
     private readonly IApplicationDbContext _context;
     private readonly ILogger<LoginCommandHandler> _logger;
     private readonly IJwtService _jwtService;
+    private readonly IPasswordHasher _passwordHasher;
     
-    public LoginCommandHandler(IApplicationDbContext context, ILogger<LoginCommandHandler> logger, IJwtService jwtService) 
+    public LoginCommandHandler(IApplicationDbContext context, ILogger<LoginCommandHandler> logger, IJwtService jwtService, IPasswordHasher passwordHasher) 
     { 
         _context = context; 
         _logger = logger;
         _jwtService = jwtService;
+        _passwordHasher = passwordHasher;
     }
     
     public async Task<Result<LoginResultDto>> Handle(LoginCommand request, CancellationToken cancellationToken)
@@ -41,10 +43,7 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, Result<LoginRes
         
         _logger.LogInformation("User found: {Email}, IsActive: {IsActive}", user.Email, user.IsActive);
         
-        var hashedPassword = HashPassword(request.Password);
-        _logger.LogInformation("Password hash comparison - Stored: {StoredHash}, Provided: {ProvidedHash}", user.PasswordHash, hashedPassword);
-        
-        if (user.PasswordHash != hashedPassword)
+        if (!_passwordHasher.VerifyPassword(request.Password, user.PasswordHash))
         {
             _logger.LogWarning("Password mismatch for user: {Email}", request.Email);
             return Result<LoginResultDto>.Failure("Şifre hatalı.");
@@ -72,13 +71,6 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, Result<LoginRes
             RequiresPasswordReset = false // user.RequiresPasswordReset
         };
         return Result<LoginResultDto>.Success(result);
-    }
-    private string HashPassword(string password)
-    {
-        using var sha256 = SHA256.Create();
-        var bytes = Encoding.UTF8.GetBytes(password);
-        var hash = sha256.ComputeHash(bytes);
-        return Convert.ToBase64String(hash);
     }
 }
 

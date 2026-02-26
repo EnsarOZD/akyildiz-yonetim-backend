@@ -95,19 +95,19 @@ namespace AkyildizYonetim.Application.Tenants.Queries.GetTenants
                     CreatedAt = t.CreatedAt,
                     UpdatedAt = t.UpdatedAt,
 
-                    TotalBalance = _context.UtilityDebts
-                        .Where(d => d.TenantId == t.Id && !d.IsDeleted && d.Status != Domain.Entities.DebtStatus.Paid)
-                        .Sum(d => d.RemainingAmount) -
-                                   _context.AdvanceAccounts
-                        .Where(a => a.TenantId == t.Id && !a.IsDeleted && a.IsActive)
-                        .Sum(a => a.Balance),
+                    TotalBalance = t.UtilityDebts
+                        .Where(d => !d.IsDeleted && d.Status != Domain.Entities.DebtStatus.Paid)
+                        .Sum(d => (decimal?)d.RemainingAmount) ?? 0 -
+                                   t.AdvanceAccounts
+                        .Where(a => !a.IsDeleted && a.IsActive)
+                        .Sum(a => (decimal?)a.Balance) ?? 0,
 
-                    AdvanceBalance = _context.AdvanceAccounts
-                        .Where(a => a.TenantId == t.Id && !a.IsDeleted && a.IsActive)
-                        .Sum(a => a.Balance),
+                    AdvanceBalance = t.AdvanceAccounts
+                        .Where(a => !a.IsDeleted && a.IsActive)
+                        .Sum(a => (decimal?)a.Balance) ?? 0,
 
-                    Flats = _context.Flats
-                        .Where(f => f.TenantId == t.Id && !f.IsDeleted)
+                    Flats = t.Flats
+                        .Where(f => !f.IsDeleted)
                         .OrderByDescending(f => f.FloorNumber ?? int.MinValue)
                         .Select(f => new TenantFlatInfoDto
                         {

@@ -50,50 +50,26 @@ public class PaymentsController : ControllerBase
         [FromQuery] DateTime? endDate,
         [FromQuery] bool excludeAdvanceUse = false)
     {
-        try
+        Guid? ownerGuid = null;
+        if (Guid.TryParse(ownerId, out var parsedOwnerId)) ownerGuid = parsedOwnerId;
+
+        Guid? tenantGuid = null;
+        if (Guid.TryParse(tenantId, out var parsedTenantId)) tenantGuid = parsedTenantId;
+
+        var result = await _mediator.Send(new GetPaymentsQuery
         {
-            var logger = HttpContext.RequestServices.GetService<ILogger<PaymentsController>>();
-            logger?.LogInformation("GetPayments called with filters: Type={Type}, Status={Status}, OwnerId={OwnerId}, TenantId={TenantId}, StartDate={StartDate}, EndDate={EndDate}", 
-                type, status, ownerId, tenantId, startDate, endDate);
+            Type = type,
+            Status = status,
+            OwnerId = ownerGuid,
+            TenantId = tenantGuid,
+            StartDate = startDate,
+            EndDate = endDate,
+            ExcludeAdvanceUse = excludeAdvanceUse
+        });
 
-            Guid? ownerGuid = null;
-            if (Guid.TryParse(ownerId, out var parsedOwnerId)) ownerGuid = parsedOwnerId;
-
-            Guid? tenantGuid = null;
-            if (Guid.TryParse(tenantId, out var parsedTenantId)) tenantGuid = parsedTenantId;
-
-            var result = await _mediator.Send(new GetPaymentsQuery
-            {
-                Type = type,
-                Status = status,
-                OwnerId = ownerGuid,
-                TenantId = tenantGuid,
-                StartDate = startDate,
-                EndDate = endDate,
-                ExcludeAdvanceUse = excludeAdvanceUse
-            });
-
-            if (result.IsSuccess)
-            {
-                logger?.LogInformation("GetPayments successful, returned {Count} payments", result.Data?.Count ?? 0);
-                return Ok(result.Data);
-            }
-            else
-            {
-                logger?.LogWarning("GetPayments failed: {Errors}", result.Errors);
-                return BadRequest(new { 
-                    error = "Failed to get payments", 
-                    message = result.ErrorMessage ?? string.Join(", ", result.Errors),
-                    details = result.Errors
-                });
-            }
-        }
-        catch (Exception ex)
-        {
-            var logger = HttpContext.RequestServices.GetService<ILogger<PaymentsController>>();
-            logger?.LogError(ex, "GetPayments exception: {Message}", ex.Message);
-            return StatusCode(500, new { error = "Internal server error", message = ex.Message, details = ex.StackTrace });
-        }
+        return result.IsSuccess 
+            ? Ok(result.Data) 
+            : BadRequest(result.ErrorMessage ?? string.Join(", ", result.Errors));
     }
 
     /// <summary>
@@ -107,34 +83,10 @@ public class PaymentsController : ControllerBase
     [ProducesResponseType(typeof(object), 500)]
     public async Task<IActionResult> GetPaymentById(Guid id)
     {
-        try
-        {
-            var logger = HttpContext.RequestServices.GetService<ILogger<PaymentsController>>();
-            logger?.LogInformation("GetPaymentById called with ID: {PaymentId}", id);
-
-            var result = await _mediator.Send(new GetPaymentByIdQuery { Id = id });
-            
-            if (result.IsSuccess)
-            {
-                logger?.LogInformation("GetPaymentById successful for ID: {PaymentId}", id);
-                return Ok(result.Data);
-            }
-            else
-            {
-                logger?.LogWarning("GetPaymentById failed for ID {PaymentId}: {Errors}", id, result.Errors);
-                return NotFound(new { 
-                    error = "Payment not found", 
-                    message = result.ErrorMessage ?? string.Join(", ", result.Errors),
-                    details = result.Errors
-                });
-            }
-        }
-        catch (Exception ex)
-        {
-            var logger = HttpContext.RequestServices.GetService<ILogger<PaymentsController>>();
-            logger?.LogError(ex, "GetPaymentById exception for ID {PaymentId}: {Message}", id, ex.Message);
-            return StatusCode(500, new { error = "Internal server error", message = ex.Message, details = ex.StackTrace });
-        }
+        var result = await _mediator.Send(new GetPaymentByIdQuery { Id = id });
+        return result.IsSuccess 
+            ? Ok(result.Data) 
+            : NotFound(result.ErrorMessage ?? string.Join(", ", result.Errors));
     }
 
     /// <summary>
@@ -149,59 +101,28 @@ public class PaymentsController : ControllerBase
     [ProducesResponseType(typeof(object), 500)]
     public async Task<IActionResult> CreatePayment([FromBody] CreatePaymentRequest request)
     {
-        try
+        if (request == null)
+            return BadRequest(new { error = "Request body is required" });
+
+        if (!DateTime.TryParse(request.PaymentDate, out var paymentDate))
+            return BadRequest(new { error = "Invalid payment date format" });
+
+        var command = new CreatePaymentCommand
         {
-            var logger = HttpContext.RequestServices.GetService<ILogger<PaymentsController>>();
-            logger?.LogInformation("CreatePayment called with request: {@Request}", request);
+            Amount = request.Amount,
+            Type = request.Type ?? PaymentType.Other,
+            Status = request.Status ?? PaymentStatus.Completed,
+            PaymentDate = paymentDate,
+            Description = request.Description,
+            ReceiptNumber = request.ReceiptNumber,
+            TenantId = request.TenantId,
+            OwnerId = request.OwnerId
+        };
 
-            // Validate request
-            if (request == null)
-                return BadRequest(new { error = "Request body is required" });
-
-            if (request.Amount <= 0)
-                return BadRequest(new { error = "Amount must be greater than 0" });
-
-            if (string.IsNullOrEmpty(request.PaymentDate))
-                return BadRequest(new { error = "Payment date is required" });
-
-            if (!DateTime.TryParse(request.PaymentDate, out var paymentDate))
-                return BadRequest(new { error = "Invalid payment date format" });
-
-            var command = new CreatePaymentCommand
-            {
-                Amount = request.Amount,
-                Type = request.Type ?? PaymentType.Other,
-                Status = request.Status ?? PaymentStatus.Completed,
-                PaymentDate = paymentDate,
-                Description = request.Description,
-                ReceiptNumber = request.ReceiptNumber,
-                TenantId = request.TenantId,
-                OwnerId = request.OwnerId
-            };
-
-            var result = await _mediator.Send(command);
-            
-            if (result.IsSuccess)
-            {
-                logger?.LogInformation("Payment created successfully with ID: {PaymentId}", result.Data?.Id);
-                return CreatedAtAction(nameof(GetPaymentById), new { id = result.Data.Id }, result.Data);
-            }
-            else
-            {
-                logger?.LogWarning("Failed to create payment: {Errors}", result.Errors);
-                return BadRequest(new { 
-                    error = "Failed to create payment", 
-                    message = result.ErrorMessage ?? string.Join(", ", result.Errors),
-                    details = result.Errors
-                });
-            }
-        }
-        catch (Exception ex)
-        {
-            var logger = HttpContext.RequestServices.GetService<ILogger<PaymentsController>>();
-            logger?.LogError(ex, "CreatePayment exception: {Message}", ex.Message);
-            return StatusCode(500, new { error = "Internal server error", message = ex.Message, details = ex.StackTrace });
-        }
+        var result = await _mediator.Send(command);
+        return result.IsSuccess
+            ? CreatedAtAction(nameof(GetPaymentById), new { id = result.Data.Id }, result.Data)
+            : BadRequest(result.ErrorMessage ?? string.Join(", ", result.Errors));
     }
 
     [Authorize(Policy = "TenantWrite")]
@@ -237,34 +158,10 @@ public class PaymentsController : ControllerBase
     [ProducesResponseType(typeof(object), 500)]
     public async Task<IActionResult> DeletePayment(Guid id)
     {
-        try
-        {
-            var logger = HttpContext.RequestServices.GetService<ILogger<PaymentsController>>();
-            logger?.LogInformation("DeletePayment called with ID: {PaymentId}", id);
-
-            var result = await _mediator.Send(new DeletePaymentCommand { Id = id });
-            
-            if (result.IsSuccess)
-            {
-                logger?.LogInformation("Payment deleted successfully with ID: {PaymentId}", id);
-                return NoContent();
-            }
-            else
-            {
-                logger?.LogWarning("Failed to delete payment with ID {PaymentId}: {Errors}", id, result.Errors);
-                return NotFound(new { 
-                    error = "Payment not found or could not be deleted", 
-                    message = result.ErrorMessage ?? string.Join(", ", result.Errors),
-                    details = result.Errors
-                });
-            }
-        }
-        catch (Exception ex)
-        {
-            var logger = HttpContext.RequestServices.GetService<ILogger<PaymentsController>>();
-            logger?.LogError(ex, "DeletePayment exception for ID {PaymentId}: {Message}", id, ex.Message);
-            return StatusCode(500, new { error = "Internal server error", message = ex.Message, details = ex.StackTrace });
-        }
+        var result = await _mediator.Send(new DeletePaymentCommand { Id = id });
+        return result.IsSuccess 
+            ? NoContent() 
+            : NotFound(result.ErrorMessage ?? string.Join(", ", result.Errors));
     }
     
     /// <summary>

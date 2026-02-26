@@ -23,13 +23,16 @@ public class CreateUserCommandHandler : IRequestHandler<CreateUserCommand, Resul
 {
     private readonly IApplicationDbContext _context;
     private readonly IServiceScopeFactory _serviceScopeFactory;
+    private readonly IPasswordHasher _passwordHasher;
 
     public CreateUserCommandHandler(
         IApplicationDbContext context, 
-        IServiceScopeFactory serviceScopeFactory)
+        IServiceScopeFactory serviceScopeFactory,
+        IPasswordHasher passwordHasher)
     {
         _context = context;
         _serviceScopeFactory = serviceScopeFactory;
+        _passwordHasher = passwordHasher;
     }
 
     public async Task<Result<Guid>> Handle(CreateUserCommand request, CancellationToken cancellationToken)
@@ -92,12 +95,5 @@ public class CreateUserCommandHandler : IRequestHandler<CreateUserCommand, Resul
         var random = new Random();
         return new string(Enumerable.Repeat(chars, length).Select(s => s[random.Next(s.Length)]).ToArray());
     }
-
-    private string HashPassword(string password)
-    {
-        using var sha256 = SHA256.Create();
-        var bytes = Encoding.UTF8.GetBytes(password);
-        var hash = sha256.ComputeHash(bytes);
-        return Convert.ToBase64String(hash);
-    }
-} 
+}
+ 

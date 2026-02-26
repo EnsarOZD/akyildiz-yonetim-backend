@@ -22,4 +22,5 @@ public class Tenant : BaseEntity
     public virtual ICollection<User> Users { get; set; } = new List<User>();
     public virtual ICollection<AdvanceAccount> AdvanceAccounts { get; set; } = new List<AdvanceAccount>();
     public virtual ICollection<PaymentDebt> PaymentDebts { get; set; } = new List<PaymentDebt>();
-} 
+    public virtual ICollection<UtilityDebt> UtilityDebts { get; set; } = new List<UtilityDebt>();
+}
