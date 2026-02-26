@@ -101,9 +101,8 @@ public class GetUtilityDebtsQueryHandler : IRequestHandler<GetUtilityDebtsQuery,
                 UpdatedAt = d.UpdatedAt,
                 RemainingAmount = d.RemainingAmount,
                 DueDate = d.DueDate,
-                TenantName = d.Tenant != null ? (!string.IsNullOrEmpty(d.Tenant.CompanyName) ? d.Tenant.CompanyName : d.Tenant.ContactPersonName) 
-                             : (d.Owner != null ? $"{d.Owner.FirstName} {d.Owner.LastName}".Trim() : (d.Description ?? "Bilinmiyor")),
-                FlatInfo = d.Flat != null ? $"Daire {d.Flat.Number}" : null
+                TenantName = d.Tenant != null ? d.Tenant.CompanyName : (d.Owner != null ? d.Owner.FirstName + " " + d.Owner.LastName : d.Description),
+                FlatInfo = d.Flat != null ? "Daire " + d.Flat.Number : null
             })
             .ToListAsync(cancellationToken);
         return Result<List<UtilityDebtDto>>.Success(debts);

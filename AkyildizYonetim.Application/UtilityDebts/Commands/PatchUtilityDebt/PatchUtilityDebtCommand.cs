@@ -20,6 +20,9 @@ public record PatchUtilityDebtCommand : IRequest<Result>
     public bool? IsPaid { get; init; }
     public Guid? TenantId { get; init; }
     public Guid? OwnerId { get; init; }
+    public int? PeriodYear { get; init; }
+    public int? PeriodMonth { get; init; }
+    public DateTime? DueDate { get; init; }
 }
 
 public class PatchUtilityDebtCommandHandler : IRequestHandler<PatchUtilityDebtCommand, Result>
@@ -49,6 +52,9 @@ public class PatchUtilityDebtCommandHandler : IRequestHandler<PatchUtilityDebtCo
         if (request.Description != null) debt.Description = request.Description;
         if (request.TenantId.HasValue) debt.TenantId = request.TenantId;
         if (request.OwnerId.HasValue) debt.OwnerId = request.OwnerId;
+        if (request.PeriodYear.HasValue) debt.PeriodYear = request.PeriodYear.Value;
+        if (request.PeriodMonth.HasValue) debt.PeriodMonth = request.PeriodMonth.Value;
+        if (request.DueDate.HasValue) debt.DueDate = request.DueDate.Value;
 
         if (request.IsPaid.HasValue)
         {

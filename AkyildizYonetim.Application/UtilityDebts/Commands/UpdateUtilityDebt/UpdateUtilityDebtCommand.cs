@@ -18,6 +18,7 @@ public record UpdateUtilityDebtCommand : IRequest<Result>
     public Guid? OwnerId { get; init; }
     public int PeriodYear { get; init; }
     public int PeriodMonth { get; init; }
+    public DateTime DueDate { get; init; }
 }
 
 public class UpdateUtilityDebtCommandHandler : IRequestHandler<UpdateUtilityDebtCommand, Result>
@@ -39,6 +40,7 @@ public class UpdateUtilityDebtCommandHandler : IRequestHandler<UpdateUtilityDebt
         debt.OwnerId = request.OwnerId;
         debt.PeriodYear = request.PeriodYear;
         debt.PeriodMonth = request.PeriodMonth;
+        debt.DueDate = request.DueDate;
         
         // Kalan tutarı hesapla
         debt.RemainingAmount = debt.Amount - (debt.PaidAmount ?? 0);
