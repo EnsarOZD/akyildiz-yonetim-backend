@@ -1,12 +1,13 @@
 using AkyildizYonetim.Application.Common.Interfaces;
 using AkyildizYonetim.Application.Common.Models;
+using AkyildizYonetim.Application.Common.Extensions;
 using AkyildizYonetim.Domain.Entities;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
 namespace AkyildizYonetim.Application.UtilityDebts.Queries.GetUtilityDebts;
 
-public record GetUtilityDebtsQuery : IRequest<Result<List<UtilityDebtDto>>>
+public record GetUtilityDebtsQuery : IRequest<Result<PagedResult<UtilityDebtDto>>>
 {
     public Guid? FlatId { get; init; }
     public DebtType? Type { get; init; }
@@ -17,9 +18,11 @@ public record GetUtilityDebtsQuery : IRequest<Result<List<UtilityDebtDto>>>
     public Guid? OwnerId { get; init; }
     public DateTime? StartDate { get; init; }
     public DateTime? EndDate { get; init; }
+    public int PageNumber { get; init; } = 1;
+    public int PageSize { get; init; } = 20;
 }
 
-public class GetUtilityDebtsQueryHandler : IRequestHandler<GetUtilityDebtsQuery, Result<List<UtilityDebtDto>>>
+public class GetUtilityDebtsQueryHandler : IRequestHandler<GetUtilityDebtsQuery, Result<PagedResult<UtilityDebtDto>>>
 {
     private readonly IApplicationDbContext _context;
     private readonly ICurrentUserService _currentUserService;
@@ -30,33 +33,33 @@ public class GetUtilityDebtsQueryHandler : IRequestHandler<GetUtilityDebtsQuery,
         _currentUserService = currentUserService;
     }
 
-    public async Task<Result<List<UtilityDebtDto>>> Handle(GetUtilityDebtsQuery request, CancellationToken cancellationToken)
+    public async Task<Result<PagedResult<UtilityDebtDto>>> Handle(GetUtilityDebtsQuery request, CancellationToken cancellationToken)
     {
         var query = _context.UtilityDebts
-            .Include(d => d.Tenant)
-            .Include(d => d.Flat)
-            .Include(d => d.Owner)
-            .IgnoreQueryFilters()
-            .Where(d => !d.IsDeleted)
+            .AsNoTracking()
             .AsQueryable();
 
-        // Veri İzolasyonu (RBAC)
-        if (!_currentUserService.IsAdmin && !_currentUserService.IsManager && 
-            !_currentUserService.IsDataEntry && !_currentUserService.IsObserver)
+        // Data Scope Resolution
+        var fullAccessRoles = new Func<ICurrentUserService, bool>[] { 
+            u => u.IsAdmin, u => u.IsManager, u => u.IsDataEntry, u => u.IsObserver 
+        };
+
+        var effectiveTenantId = DataScopeHelper.ResolveTenantId(_currentUserService, request.TenantId, fullAccessRoles);
+        var effectiveOwnerId = DataScopeHelper.ResolveOwnerId(_currentUserService, request.OwnerId, fullAccessRoles);
+
+        if (DataScopeHelper.IsScopeRestricted(_currentUserService, fullAccessRoles))
         {
-            if (_currentUserService.TenantId.HasValue)
+            if (!effectiveTenantId.HasValue && !effectiveOwnerId.HasValue)
             {
-                query = query.Where(d => d.TenantId == _currentUserService.TenantId.Value);
-            }
-            else if (_currentUserService.OwnerId.HasValue)
-            {
-                query = query.Where(d => d.OwnerId == _currentUserService.OwnerId.Value);
-            }
-            else
-            {
-                return Result<List<UtilityDebtDto>>.Success(new List<UtilityDebtDto>());
+                return Result<PagedResult<UtilityDebtDto>>.Success(new PagedResult<UtilityDebtDto>());
             }
         }
+
+        if (effectiveTenantId.HasValue)
+            query = query.Where(d => d.TenantId == effectiveTenantId.Value);
+
+        if (effectiveOwnerId.HasValue)
+            query = query.Where(d => d.OwnerId == effectiveOwnerId.Value);
 
         if (request.StartDate.HasValue)
         {
@@ -78,11 +81,10 @@ public class GetUtilityDebtsQueryHandler : IRequestHandler<GetUtilityDebtsQuery,
             query = query.Where(d => d.PeriodMonth == request.PeriodMonth.Value);
         if (request.Status.HasValue)
             query = query.Where(d => d.Status == request.Status.Value);
-        if (request.TenantId.HasValue)
-            query = query.Where(d => d.TenantId == request.TenantId.Value);
-        if (request.OwnerId.HasValue)
-            query = query.Where(d => d.OwnerId == request.OwnerId.Value);
-        var debts = await query.OrderByDescending(d => d.PeriodYear).ThenByDescending(d => d.PeriodMonth)
+        var debts = await query.OrderByDescending(d => d.PeriodYear)
+            .ThenByDescending(d => d.PeriodMonth)
+            .ThenByDescending(d => d.CreatedAt)
+            .ThenByDescending(d => d.Id) 
             .Select(d => new UtilityDebtDto
             {
                 Id = d.Id,
@@ -104,8 +106,9 @@ public class GetUtilityDebtsQueryHandler : IRequestHandler<GetUtilityDebtsQuery,
                 TenantName = d.Tenant != null ? d.Tenant.CompanyName : (d.Owner != null ? d.Owner.FirstName + " " + d.Owner.LastName : d.Description),
                 FlatInfo = d.Flat != null ? "Daire " + d.Flat.Number : null
             })
-            .ToListAsync(cancellationToken);
-        return Result<List<UtilityDebtDto>>.Success(debts);
+            .ToPagedResultAsync(request.PageNumber, request.PageSize, cancellationToken);
+
+        return Result<PagedResult<UtilityDebtDto>>.Success(debts);
     }
 }
 

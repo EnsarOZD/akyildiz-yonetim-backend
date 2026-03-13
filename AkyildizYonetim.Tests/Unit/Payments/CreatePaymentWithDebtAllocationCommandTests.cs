@@ -14,13 +14,23 @@ public class CreatePaymentWithDebtAllocationCommandTests
 {
     private readonly Mock<IApplicationDbContext> _mockContext;
     private readonly Mock<ILogger<CreatePaymentWithDebtAllocationCommandHandler>> _mockLogger;
+    private readonly Mock<ICurrentUserService> _mockUserService;
     private readonly CreatePaymentWithDebtAllocationCommandHandler _handler;
 
     public CreatePaymentWithDebtAllocationCommandTests()
     {
         _mockContext = new Mock<IApplicationDbContext>();
         _mockLogger = new Mock<ILogger<CreatePaymentWithDebtAllocationCommandHandler>>();
-        _handler = new CreatePaymentWithDebtAllocationCommandHandler(_mockContext.Object, _mockLogger.Object);
+        _mockUserService = new Mock<ICurrentUserService>();
+        
+        // Default to Admin
+        _mockUserService.Setup(s => s.IsAdmin).Returns(true);
+        _mockUserService.Setup(s => s.IsManager).Returns(true);
+        _mockUserService.Setup(s => s.IsDataEntry).Returns(true);
+
+        _mockContext.Setup(c => c.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
+
+        _handler = new CreatePaymentWithDebtAllocationCommandHandler(_mockContext.Object, _mockLogger.Object, _mockUserService.Object);
     }
 
     [Fact]

@@ -38,6 +38,19 @@ public class CreatePaymentCommandHandler : IRequestHandler<CreatePaymentCommand,
 
 	public async Task<Result<PaymentDto>> Handle(CreatePaymentCommand request, CancellationToken cancellationToken)
 	{
+		// Isolate creation for non-admin/manager roles
+		if (!_currentUserService.IsAdmin && !_currentUserService.IsManager)
+		{
+			if (request.TenantId.HasValue && request.TenantId != _currentUserService.TenantId)
+			{
+				return Result<PaymentDto>.Failure("Başka bir kiracı adına ödeme oluşturamazsınız.");
+			}
+			if (request.OwnerId.HasValue && request.OwnerId != _currentUserService.OwnerId)
+			{
+				return Result<PaymentDto>.Failure("Başka bir mal sahibi adına ödeme oluşturamazsınız.");
+			}
+		}
+
 		var payment = new Payment
 		{
 			Id = Guid.NewGuid(),

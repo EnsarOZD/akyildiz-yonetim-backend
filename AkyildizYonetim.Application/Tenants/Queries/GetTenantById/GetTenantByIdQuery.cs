@@ -14,10 +14,25 @@ public record GetTenantByIdQuery : IRequest<Result<TenantDto>>
 public class GetTenantByIdQueryHandler : IRequestHandler<GetTenantByIdQuery, Result<TenantDto>>
 {
 	private readonly IApplicationDbContext _context;
-	public GetTenantByIdQueryHandler(IApplicationDbContext context) { _context = context; }
+	private readonly ICurrentUserService _currentUserService;
+
+	public GetTenantByIdQueryHandler(IApplicationDbContext context, ICurrentUserService currentUserService) 
+	{ 
+		_context = context; 
+		_currentUserService = currentUserService;
+	}
 
 	public async Task<Result<TenantDto>> Handle(GetTenantByIdQuery request, CancellationToken ct)
 	{
+		// Isolate access for non-admin/manager roles
+		if (!_currentUserService.IsAdmin && !_currentUserService.IsManager)
+		{
+			if (_currentUserService.TenantId != request.Id)
+			{
+				return Result<TenantDto>.Failure("Bu kiracı verisine erişim yetkiniz yok.");
+			}
+		}
+
 		var tenant = await _context.Tenants
 			.AsNoTracking()
 			.Where(t => t.Id == request.Id && !t.IsDeleted)

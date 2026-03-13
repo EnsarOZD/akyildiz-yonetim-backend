@@ -1,5 +1,6 @@
 using AkyildizYonetim.Application.Common.Interfaces;
 using AkyildizYonetim.Application.Common.Models;
+using AkyildizYonetim.Application.Common.Extensions;
 using AkyildizYonetim.Domain.Entities;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -7,7 +8,7 @@ using AkyildizYonetim.Application.DTOs;
 
 namespace AkyildizYonetim.Application.Payments.Queries.GetPayments;
 
-public record GetPaymentsQuery : IRequest<Result<List<PaymentDto>>>
+public record GetPaymentsQuery : IRequest<Result<PagedResult<PaymentDto>>>
 {
     public PaymentType? Type { get; init; }
     public PaymentStatus? Status { get; init; }
@@ -17,9 +18,11 @@ public record GetPaymentsQuery : IRequest<Result<List<PaymentDto>>>
     public DateTime? EndDate { get; init; }
     public DebtType? UtilityType { get; init; }
     public bool ExcludeAdvanceUse { get; init; } = false;
+    public int PageNumber { get; init; } = 1;
+    public int PageSize { get; init; } = 20;
 }
 
-public class GetPaymentsQueryHandler : IRequestHandler<GetPaymentsQuery, Result<List<PaymentDto>>>
+public class GetPaymentsQueryHandler : IRequestHandler<GetPaymentsQuery, Result<PagedResult<PaymentDto>>>
 {
     private readonly IApplicationDbContext _context;
     private readonly ICurrentUserService _currentUserService;
@@ -30,29 +33,30 @@ public class GetPaymentsQueryHandler : IRequestHandler<GetPaymentsQuery, Result<
         _currentUserService = currentUserService;
     }
 
-    public async Task<Result<List<PaymentDto>>> Handle(GetPaymentsQuery request, CancellationToken cancellationToken)
+    public async Task<Result<PagedResult<PaymentDto>>> Handle(GetPaymentsQuery request, CancellationToken cancellationToken)
     {
         var query = _context.Payments
+            .AsNoTracking()
             .Where(p => !p.IsDeleted)
             .AsQueryable();
 
-        // Veri İzolasyonu (RBAC)
-        if (!_currentUserService.IsAdmin && !_currentUserService.IsManager)
+        // Data Scope Resolution
+        var effectiveTenantId = DataScopeHelper.ResolveTenantId(_currentUserService, request.TenantId, u => u.IsAdmin, u => u.IsManager);
+        var effectiveOwnerId = DataScopeHelper.ResolveOwnerId(_currentUserService, request.OwnerId, u => u.IsAdmin, u => u.IsManager);
+
+        if (DataScopeHelper.IsScopeRestricted(_currentUserService, u => u.IsAdmin, u => u.IsManager))
         {
-            if (_currentUserService.TenantId.HasValue)
+            if (!effectiveTenantId.HasValue && !effectiveOwnerId.HasValue)
             {
-                query = query.Where(p => p.TenantId == _currentUserService.TenantId.Value);
-            }
-            else if (_currentUserService.OwnerId.HasValue)
-            {
-                query = query.Where(p => p.OwnerId == _currentUserService.OwnerId.Value);
-            }
-            else
-            {
-                // Eğer rolü var ama bağlı olduğu bir ID yoksa (ve admin değilse), veri görmemeli
-                return Result<List<PaymentDto>>.Success(new List<PaymentDto>());
+                return Result<PagedResult<PaymentDto>>.Success(new PagedResult<PaymentDto>());
             }
         }
+
+        if (effectiveTenantId.HasValue)
+            query = query.Where(p => p.TenantId == effectiveTenantId.Value);
+
+        if (effectiveOwnerId.HasValue)
+            query = query.Where(p => p.OwnerId == effectiveOwnerId.Value);
 
         if (request.UtilityType.HasValue)
         {
@@ -66,11 +70,6 @@ public class GetPaymentsQueryHandler : IRequestHandler<GetPaymentsQuery, Result<
         if (request.Status.HasValue)
             query = query.Where(p => p.Status == request.Status.Value);
 
-        if (request.OwnerId.HasValue)
-            query = query.Where(p => p.OwnerId == request.OwnerId.Value);
-
-        if (request.TenantId.HasValue)
-            query = query.Where(p => p.TenantId == request.TenantId.Value);
 
         if (request.StartDate.HasValue)
             query = query.Where(p => p.PaymentDate >= request.StartDate.Value);
@@ -86,38 +85,33 @@ public class GetPaymentsQueryHandler : IRequestHandler<GetPaymentsQuery, Result<
                 !p.ReceiptNumber.StartsWith("AVANS-"));
         }
 
-        var paymentsByQuery = await query
-            .Include(p => p.Tenant)
-                .ThenInclude(t => t.Flats)
-            .Include(p => p.Owner)
-                .ThenInclude(o => o.Flats)
-            .Include(p => p.PaymentDebts)
-                .ThenInclude(pd => pd.Debt)
+        var pagedPayments = await query
             .OrderByDescending(p => p.PaymentDate)
-            .ToListAsync(cancellationToken);
+            .ThenByDescending(p => p.CreatedAt) // Deterministic ordering
+            .ThenByDescending(p => p.Id) 
+            .Select(p => new PaymentDto
+            {
+                Id = p.Id,
+                Amount = p.Amount,
+                Type = p.Type,
+                Status = p.Status,
+                PaymentDate = p.PaymentDate,
+                Description = p.Description,
+                ReceiptNumber = p.ReceiptNumber,
+                OwnerId = p.OwnerId,
+                TenantId = p.TenantId,
+                CreatedAt = p.CreatedAt,
+                UpdatedAt = p.UpdatedAt,
+                TenantName = p.Tenant != null ? (!string.IsNullOrEmpty(p.Tenant.CompanyName) ? p.Tenant.CompanyName : p.Tenant.ContactPersonName) : null,
+                OwnerName = p.Owner != null ? $"{p.Owner.FirstName} {p.Owner.LastName}".Trim() : null,
+                FlatInfo = p.Tenant != null && p.Tenant.Flats.Any() 
+                    ? string.Join(", ", p.Tenant.Flats.Select(f => $"Daire {f.Number}"))
+                    : (p.Owner != null && p.Owner.Flats.Any() ? string.Join(", ", p.Owner.Flats.Select(f => $"Daire {f.Number}")) : null),
+                PeriodYear = p.PaymentDebts.Select(pd => pd.Debt.PeriodYear).FirstOrDefault(),
+                PeriodMonth = p.PaymentDebts.Select(pd => pd.Debt.PeriodMonth).FirstOrDefault()
+            })
+            .ToPagedResultAsync(request.PageNumber, request.PageSize, cancellationToken);
 
-        var payments = paymentsByQuery.Select(p => new PaymentDto
-        {
-            Id = p.Id,
-            Amount = p.Amount,
-            Type = p.Type,
-            Status = p.Status,
-            PaymentDate = p.PaymentDate,
-            Description = p.Description,
-            ReceiptNumber = p.ReceiptNumber,
-            OwnerId = p.OwnerId,
-            TenantId = p.TenantId,
-            CreatedAt = p.CreatedAt,
-            UpdatedAt = p.UpdatedAt,
-            TenantName = p.Tenant != null ? (!string.IsNullOrEmpty(p.Tenant.CompanyName) ? p.Tenant.CompanyName : p.Tenant.ContactPersonName) : null,
-            OwnerName = p.Owner != null ? $"{p.Owner.FirstName} {p.Owner.LastName}".Trim() : null,
-            FlatInfo = p.Tenant != null && p.Tenant.Flats.Any() 
-                ? string.Join(", ", p.Tenant.Flats.Select(f => $"Daire {f.Number}"))
-                : (p.Owner != null && p.Owner.Flats.Any() ? string.Join(", ", p.Owner.Flats.Select(f => $"Daire {f.Number}")) : null),
-            PeriodYear = p.PaymentDebts.Select(pd => pd.Debt.PeriodYear).FirstOrDefault(),
-            PeriodMonth = p.PaymentDebts.Select(pd => pd.Debt.PeriodMonth).FirstOrDefault()
-        }).ToList();
-
-        return Result<List<PaymentDto>>.Success(payments);
+        return Result<PagedResult<PaymentDto>>.Success(pagedPayments);
     }
 } 

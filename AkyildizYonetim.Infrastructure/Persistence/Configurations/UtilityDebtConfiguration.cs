@@ -31,6 +31,10 @@ public class UtilityDebtConfiguration : IEntityTypeConfiguration<UtilityDebt>
             
         builder.Property(d => d.PaidAmount)
             .HasPrecision(18, 2);
+
+        builder.Property(d => d.RemainingAmount)
+            .HasPrecision(18, 2)
+            .IsRequired();
             
         builder.Property(d => d.PaidDate);
             

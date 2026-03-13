@@ -19,7 +19,7 @@ public class DeleteFlatCommandHandler : IRequestHandler<DeleteFlatCommand, Resul
 	public async Task<Result> Handle(DeleteFlatCommand request, CancellationToken ct)
 {
     var flat = await _context.Flats
-        .FirstOrDefaultAsync(f => f.Id == request.Id && !f.IsDeleted, ct);
+        .FirstOrDefaultAsync(f => f.Id == request.Id, ct);
 
     if (flat is null)
         return Result.Failure("Ünite bulunamadı.");
@@ -29,11 +29,10 @@ public class DeleteFlatCommandHandler : IRequestHandler<DeleteFlatCommand, Resul
         return Result.Failure("Ünite doluyken silinemez. Önce kiracı ilişiğini kaldırın.");
 
     // Soft delete
-    flat.IsDeleted = true;
+    _context.Flats.Remove(flat);
     flat.IsActive  = false;
     flat.IsOccupied = false;
     flat.TenantId = null;          // ilişkiyi kopar
-    flat.UpdatedAt = DateTime.UtcNow;
 
     await _context.SaveChangesAsync(ct);
     return Result.Success();

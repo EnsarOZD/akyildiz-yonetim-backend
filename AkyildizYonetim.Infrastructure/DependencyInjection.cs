@@ -1,6 +1,7 @@
 using AkyildizYonetim.Application.Common.Interfaces;
 using AkyildizYonetim.Infrastructure.Jwt;
 using AkyildizYonetim.Infrastructure.Persistence;
+using AkyildizYonetim.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -14,6 +15,7 @@ public static class DependencyInjection
         var connectionString = configuration.GetConnectionString("DefaultConnection") ??
             throw new InvalidOperationException("DefaultConnection is not configured");
 
+        services.AddMemoryCache();
         services.Configure<AkyildizYonetim.Application.Common.Models.ClientSettings>(configuration.GetSection("ClientSettings"));
 
         services.AddDbContext<ApplicationDbContext>(options =>
@@ -29,6 +31,8 @@ public static class DependencyInjection
         services.AddScoped<IEmailSender, AkyildizYonetim.Infrastructure.Email.PostmarkEmailSender>();
         services.AddScoped<IWebPushService, AkyildizYonetim.Infrastructure.Notifications.WebPushService>();
         services.AddScoped<IPasswordHasher, AkyildizYonetim.Infrastructure.Identity.PasswordHasher>();
+        services.AddScoped<ILoginAttemptService, LoginAttemptService>();
+        services.AddScoped<IPasswordPolicyValidator, PasswordPolicyValidator>();
 
         return services;
     }

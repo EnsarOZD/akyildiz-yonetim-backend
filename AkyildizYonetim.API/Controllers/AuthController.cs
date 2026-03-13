@@ -4,7 +4,9 @@ using AkyildizYonetim.Application.Users.Commands.ChangePassword;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.RateLimiting;
 using System.Security.Claims;
+using AkyildizYonetim.Application.Common.Interfaces;
 
 namespace AkyildizYonetim.API.Controllers;
 
@@ -14,16 +16,25 @@ public class AuthController : ControllerBase
 {
     private readonly IMediator _mediator;
     private readonly ILogger<AuthController> _logger;
+    private readonly ILoginAttemptService _loginAttemptService;
     
-    public AuthController(IMediator mediator, ILogger<AuthController> logger) 
+    public AuthController(IMediator mediator, ILogger<AuthController> logger, ILoginAttemptService loginAttemptService) 
     { 
         _mediator = mediator; 
         _logger = logger;
+        _loginAttemptService = loginAttemptService;
     }
-
+ 
     [HttpPost("login")]
+    [EnableRateLimiting("LoginPolicy")]
     public async Task<IActionResult> Login([FromBody] LoginCommand command)
     {
+        if (await _loginAttemptService.IsLockedOutAsync(command.Email))
+        {
+            _logger.LogWarning("Login blocked due to lockout: {Email}", command.Email);
+            return StatusCode(StatusCodes.Status423Locked, "Çok fazla hatalı deneme. Lütfen daha sonra tekrar deneyiniz.");
+        }
+
         _logger.LogInformation("Login attempt for email: {Email}", command.Email);
         
         var result = await _mediator.Send(command);
@@ -31,11 +42,13 @@ public class AuthController : ControllerBase
         if (result.IsSuccess)
         {
             _logger.LogInformation("Login successful for user: {Email}", command.Email);
+            await _loginAttemptService.ResetAttemptsAsync(command.Email);
             return Ok(result.Data);
         }
         else
         {
             _logger.LogWarning("Login failed for user: {Email}. Error: {Error}", command.Email, result.ErrorMessage ?? string.Join(", ", result.Errors));
+            await _loginAttemptService.RegisterFailedAttemptAsync(command.Email);
             return Unauthorized(result.ErrorMessage ?? string.Join(", ", result.Errors));
         }
     }
@@ -48,8 +61,16 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("change-password")]
+    [Authorize]
     public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordCommand command)
     {
+        var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (!Guid.TryParse(userIdString, out var userId))
+        {
+            return Unauthorized();
+        }
+
+        command.ResolvedUserId = userId;
         var result = await _mediator.Send(command);
         return result.IsSuccess ? Ok() : BadRequest(result.ErrorMessage ?? string.Join(", ", result.Errors));
     }

@@ -25,14 +25,14 @@ public class DeletePaymentCommandHandler : IRequestHandler<DeletePaymentCommand,
         var payment = await _context.Payments
             .Include(p => p.PaymentDebts)
                 .ThenInclude(pd => pd.Debt)
-            .FirstOrDefaultAsync(p => p.Id == request.Id && !p.IsDeleted, cancellationToken);
+            .FirstOrDefaultAsync(p => p.Id == request.Id, cancellationToken);
 
         if (payment == null)
             return Result.Failure("Ödeme bulunamadı.");
 
         // 1. Borç durumlarını geri al ve silinen ödenen miktarları topla
         decimal allocatedAmount = 0;
-        foreach (var pd in payment.PaymentDebts.Where(x => !x.IsDeleted))
+        foreach (var pd in payment.PaymentDebts)
         {
             var debt = pd.Debt;
             debt.PaidAmount = (debt.PaidAmount ?? 0) - pd.PaidAmount;
@@ -41,16 +41,14 @@ public class DeletePaymentCommandHandler : IRequestHandler<DeletePaymentCommand,
             debt.UpdatedAt = DateTime.UtcNow;
 
             allocatedAmount += pd.PaidAmount;
-
-            pd.IsDeleted = true;
-            pd.UpdatedAt = DateTime.UtcNow;
+            _context.PaymentDebts.Remove(pd);
         }
 
         // 2. Avans Düzenlemeleri
         if (payment.TenantId.HasValue)
         {
             var advanceAccount = await _context.AdvanceAccounts
-                .FirstOrDefaultAsync(aa => aa.TenantId == payment.TenantId.Value && !aa.IsDeleted, cancellationToken);
+                .FirstOrDefaultAsync(aa => aa.TenantId == payment.TenantId.Value, cancellationToken);
 
             if (advanceAccount != null)
             {
@@ -72,8 +70,7 @@ public class DeletePaymentCommandHandler : IRequestHandler<DeletePaymentCommand,
             }
         }
 
-        payment.IsDeleted = true;
-        payment.UpdatedAt = DateTime.UtcNow;
+        _context.Payments.Remove(payment);
 
         await _context.SaveChangesAsync(cancellationToken);
 

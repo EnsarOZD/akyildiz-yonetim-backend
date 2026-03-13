@@ -23,14 +23,13 @@ public class DeleteTenantCommandHandler : IRequestHandler<DeleteTenantCommand, R
     {
         var tenant = await _context.Tenants
             .Include(t => t.Flats)
-            .FirstOrDefaultAsync(t => t.Id == request.Id && !t.IsDeleted, cancellationToken);
+            .FirstOrDefaultAsync(t => t.Id == request.Id, cancellationToken);
             
         if (tenant == null)
             return Result.Failure("Kiracı bulunamadı.");
             
         // Kiracıyı sil
-        tenant.IsDeleted = true;
-        tenant.UpdatedAt = DateTime.UtcNow;
+        _context.Tenants.Remove(tenant);
         
         // Kiracıya ait flat'ları temizle
         foreach (var flat in tenant.Flats)

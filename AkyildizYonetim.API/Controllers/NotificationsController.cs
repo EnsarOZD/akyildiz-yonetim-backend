@@ -97,7 +97,11 @@ public class NotificationsController : ControllerBase
     [HttpDelete("unsubscribe")]
     public async Task<IActionResult> Unsubscribe([FromQuery] string endpoint)
     {
-        var result = await _mediator.Send(new UnsubscribePushCommand { Endpoint = endpoint });
+        var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userIdStr) || !Guid.TryParse(userIdStr, out var userId))
+            return Unauthorized();
+
+        var result = await _mediator.Send(new UnsubscribePushCommand { Endpoint = endpoint, UserId = userId });
 
         return result.IsSuccess ? Ok() : BadRequest(result.ErrorMessage);
     }

@@ -5,11 +5,11 @@ using AkyildizYonetim.Application.UtilityDebts.Commands.DeleteUtilityDebt;
 using AkyildizYonetim.Application.UtilityDebts.Queries.GetUtilityDebts;
 using AkyildizYonetim.Application.UtilityDebts.Commands.ImportUtilityDebts;
 using AkyildizYonetim.Application.UtilityDebts.Queries.GetUtilityDebtById;
+using AkyildizYonetim.Application.Common.Models;
+using AkyildizYonetim.Application.UtilityDebts.Commands.DistributeSharedExpense;
 using AkyildizYonetim.Domain.Entities;
-using AkyildizYonetim.Infrastructure.Persistence;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authorization;
 
 namespace AkyildizYonetim.API.Controllers;
@@ -20,12 +20,10 @@ namespace AkyildizYonetim.API.Controllers;
 public class UtilityDebtsController : ControllerBase
 {
     private readonly IMediator _mediator;
-    private readonly ApplicationDbContext _context;
 
-    public UtilityDebtsController(IMediator mediator, ApplicationDbContext context)
+    public UtilityDebtsController(IMediator mediator)
     {
         _mediator = mediator;
-        _context = context;
     }
 
     [Authorize(Policy = "TenantWrite")]
@@ -42,9 +40,30 @@ public class UtilityDebtsController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetUtilityDebts([FromQuery] Guid? flatId, [FromQuery] DebtType? type, [FromQuery] int? periodYear, [FromQuery] int? periodMonth, [FromQuery] DebtStatus? status, [FromQuery] Guid? tenantId, [FromQuery] Guid? ownerId)
+    [ProducesResponseType(typeof(PagedResult<AkyildizYonetim.Application.UtilityDebts.Queries.GetUtilityDebts.UtilityDebtDto>), 200)]
+    public async Task<IActionResult> GetUtilityDebts(
+        [FromQuery] Guid? flatId, 
+        [FromQuery] DebtType? type, 
+        [FromQuery] int? periodYear, 
+        [FromQuery] int? periodMonth, 
+        [FromQuery] DebtStatus? status, 
+        [FromQuery] Guid? tenantId, 
+        [FromQuery] Guid? ownerId,
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 20)
     {
-        var result = await _mediator.Send(new GetUtilityDebtsQuery { FlatId = flatId, Type = type, PeriodYear = periodYear, PeriodMonth = periodMonth, Status = status, TenantId = tenantId, OwnerId = ownerId });
+        var result = await _mediator.Send(new GetUtilityDebtsQuery 
+        { 
+            FlatId = flatId, 
+            Type = type, 
+            PeriodYear = periodYear, 
+            PeriodMonth = periodMonth, 
+            Status = status, 
+            TenantId = tenantId, 
+            OwnerId = ownerId,
+            PageNumber = pageNumber,
+            PageSize = pageSize
+        });
         return result.IsSuccess ? Ok(result.Data) : BadRequest(result.ErrorMessage ?? string.Join(", ", result.Errors));
     }
 
@@ -119,88 +138,15 @@ public class UtilityDebtsController : ControllerBase
     [HttpPost("distribute")]
     public async Task<IActionResult> DistributeSharedExpense([FromBody] DistributeSharedExpenseRequest request)
     {
-        try
-        {
-            // Dönem bilgisini parse et
-            if (!DateTime.TryParseExact(request.Period, "yyyy-MM", null, System.Globalization.DateTimeStyles.None, out DateTime periodDate))
-            {
-                return BadRequest("Geçersiz dönem formatı. YYYY-MM formatında olmalı.");
-            }
+        var result = await _mediator.Send(new DistributeSharedExpenseCommand 
+        { 
+            Period = request.Period, 
+            UtilityType = request.UtilityType 
+        });
 
-            // Utility type'ı enum'a çevir
-            if (!Enum.TryParse<DebtType>(request.UtilityType, out DebtType utilityType))
-            {
-                return BadRequest("Geçersiz gider tipi.");
-            }
-
-            // Ortak gider kaydını bul
-            var sharedExpense = await _context.UtilityDebts
-                .Where(d => d.PeriodYear == periodDate.Year && 
-                           d.PeriodMonth == periodDate.Month && 
-                           d.Type == utilityType &&
-                           (d.Description == "Ortak Alan" || d.Description == "Mescit"))
-                .FirstOrDefaultAsync();
-
-            if (sharedExpense == null)
-            {
-                return BadRequest("Bu dönem için ortak gider kaydı bulunamadı.");
-            }
-
-            // Aktif (dolu) üniteleri getir
-            var activeFlats = await _context.Flats
-                .Where(f => !f.IsDeleted && f.TenantId != null && f.IsOccupied)
-                .Include(f => f.Tenant)
-                .ToListAsync();
-
-            if (!activeFlats.Any())
-            {
-                return BadRequest("Dolu ünite (aktif kiracı) bulunamadı.");
-            }
-
-            // Ünite başına düşen tutarı hesapla
-            decimal amountPerFlat = sharedExpense.Amount / activeFlats.Count;
-
-            // Her ünite için borç kaydı oluştur
-            var createdDebtsCount = 0;
-            foreach (var flat in activeFlats)
-            {
-                var defaultDueDate = new DateTime(periodDate.Year, periodDate.Month, 1).AddDays(9);
-
-                var debt = new UtilityDebt
-                {
-                    Id = Guid.NewGuid(),
-                    FlatId = flat.Id,
-                    Type = utilityType,
-                    PeriodYear = periodDate.Year,
-                    PeriodMonth = periodDate.Month,
-                    Amount = amountPerFlat,
-                    RemainingAmount = amountPerFlat,
-                    Status = DebtStatus.Unpaid,
-                    DueDate = defaultDueDate,
-                    Description = $"Ortak {request.UtilityType} Payı - {flat.Code} ({flat.Tenant?.CompanyName})",
-                    TenantId = flat.TenantId,
-                    OwnerId = flat.OwnerId,
-                    CreatedAt = DateTime.UtcNow
-                };
-
-                _context.UtilityDebts.Add(debt);
-                createdDebtsCount++;
-            }
-
-            await _context.SaveChangesAsync();
-
-            return Ok(new { 
-                message = "Ortak gider başarıyla paylaştırıldı", 
-                sharedExpenseAmount = sharedExpense.Amount,
-                unitCount = activeFlats.Count,
-                amountPerFlat = amountPerFlat,
-                createdDebtsCount = createdDebtsCount
-            });
-        }
-        catch (Exception ex)
-        {
-            return BadRequest($"Ortak gider paylaştırılırken hata oluştu: {ex.Message}");
-        }
+        return result.IsSuccess 
+            ? Ok(result.Data) 
+            : BadRequest(result.ErrorMessage ?? string.Join(", ", result.Errors));
     }
 
     [Authorize(Policy = "TenantWrite")]

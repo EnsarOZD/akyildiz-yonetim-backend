@@ -13,12 +13,9 @@ public class PostmarkEmailSender : IEmailSender
 
     public PostmarkEmailSender(IConfiguration configuration)
     {
-        _serverToken = configuration["POSTMARK_SERVER_TOKEN"] 
-            ?? throw new InvalidOperationException("POSTMARK_SERVER_TOKEN configuration is missing.");
-
-        _fromEmail = configuration["EMAIL_FROM"] 
-            ?? "noreply@akyildizyonetim.com";
-
+        // Token is optional at construction time; validated lazily on first send
+        _serverToken = configuration["POSTMARK_SERVER_TOKEN"] ?? string.Empty;
+        _fromEmail = configuration["EMAIL_FROM"] ?? "noreply@akyildizyonetim.com";
         _appName = configuration["APP_NAME"] ?? "Akyıldız Yönetim";
     }
 
@@ -45,6 +42,9 @@ public class PostmarkEmailSender : IEmailSender
 
     private async Task SendAsync(string to, string subject, string htmlBody)
     {
+        if (string.IsNullOrEmpty(_serverToken))
+            throw new InvalidOperationException("POSTMARK_SERVER_TOKEN configuration is missing. E-posta gönderilemedi.");
+
         var client = new PostmarkClient(_serverToken);
 
         var message = new PostmarkMessage

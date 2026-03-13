@@ -1,18 +1,21 @@
 using AkyildizYonetim.Application.Common.Interfaces;
 using AkyildizYonetim.Application.Common.Models;
+using AkyildizYonetim.Application.Common.Extensions;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using AkyildizYonetim.Application.DTOs;
 
 namespace AkyildizYonetim.Application.Owners.Queries.GetOwners;
 
-public record GetOwnersQuery : IRequest<Result<List<OwnerDto>>>
+public record GetOwnersQuery : IRequest<Result<PagedResult<OwnerDto>>>
 {
     public bool? IsActive { get; init; }
     public string? SearchTerm { get; init; }
+    public int PageNumber { get; init; } = 1;
+    public int PageSize { get; init; } = 20;
 }
 
-public class GetOwnersQueryHandler : IRequestHandler<GetOwnersQuery, Result<List<OwnerDto>>>
+public class GetOwnersQueryHandler : IRequestHandler<GetOwnersQuery, Result<PagedResult<OwnerDto>>>
 {
     private readonly IApplicationDbContext _context;
     private readonly ICurrentUserService _currentUserService;
@@ -23,9 +26,10 @@ public class GetOwnersQueryHandler : IRequestHandler<GetOwnersQuery, Result<List
         _currentUserService = currentUserService;
     }
 
-    public async Task<Result<List<OwnerDto>>> Handle(GetOwnersQuery request, CancellationToken cancellationToken)
+    public async Task<Result<PagedResult<OwnerDto>>> Handle(GetOwnersQuery request, CancellationToken cancellationToken)
     {
         var query = _context.Owners
+            .AsNoTracking()
             .Where(o => !o.IsDeleted)
             .AsQueryable();
 
@@ -39,13 +43,11 @@ public class GetOwnersQueryHandler : IRequestHandler<GetOwnersQuery, Result<List
             else if (_currentUserService.TenantId.HasValue)
             {
                 // Kiracı, kendi dairesinin mal sahibini görebilir mi?
-                // Genellikle evet, ama kısıtlamak gerekebilir. 
-                // Şimdilik sadece kendi mal sahibini görmesini sağlayalım.
                 query = query.Where(o => _context.Flats.Any(f => f.TenantId == _currentUserService.TenantId.Value && f.OwnerId == o.Id));
             }
             else
             {
-                return Result<List<OwnerDto>>.Success(new List<OwnerDto>());
+                return Result<PagedResult<OwnerDto>>.Success(new PagedResult<OwnerDto>());
             }
         }
 
@@ -65,9 +67,10 @@ public class GetOwnersQueryHandler : IRequestHandler<GetOwnersQuery, Result<List
                 o.PhoneNumber.Contains(searchTerm));
         }
 
-        var owners = await query
+        var pagedOwners = await query
             .OrderBy(o => o.FirstName)
             .ThenBy(o => o.LastName)
+            .ThenBy(o => o.Id) // Stable sort
             .Select(o => new OwnerDto
             {
                 Id = o.Id,
@@ -89,8 +92,8 @@ public class GetOwnersQueryHandler : IRequestHandler<GetOwnersQuery, Result<List
                     })
                     .ToList()
             })
-            .ToListAsync(cancellationToken);
+            .ToPagedResultAsync(request.PageNumber, request.PageSize, cancellationToken);
 
-        return Result<List<OwnerDto>>.Success(owners);
+        return Result<PagedResult<OwnerDto>>.Success(pagedOwners);
     }
 } 

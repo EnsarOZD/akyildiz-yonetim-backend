@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace AkyildizYonetim.API.Controllers;
 
-[Authorize(Policy = "FinanceRead")]
+[Authorize(Roles = "admin,manager")]
 [ApiController]
 [Route("api/[controller]")]
 public class AuditLogsController : ControllerBase

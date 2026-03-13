@@ -24,7 +24,7 @@ public class DeleteAdvanceAccountCommandHandler : IRequestHandler<DeleteAdvanceA
         try
         {
             var advanceAccount = await _context.AdvanceAccounts
-                .FirstOrDefaultAsync(aa => aa.Id == request.Id && !aa.IsDeleted, cancellationToken);
+                .FirstOrDefaultAsync(aa => aa.Id == request.Id, cancellationToken);
 
             if (advanceAccount == null)
             {
@@ -32,7 +32,7 @@ public class DeleteAdvanceAccountCommandHandler : IRequestHandler<DeleteAdvanceA
             }
 
             // Soft delete
-            advanceAccount.IsDeleted = true;
+            _context.AdvanceAccounts.Remove(advanceAccount);
             await _context.SaveChangesAsync(cancellationToken);
 
             return Result.Success();

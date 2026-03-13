@@ -20,26 +20,46 @@ public class UseAdvanceAccountCommandHandler
 {
     private readonly IApplicationDbContext _context;
     private readonly ILogger<UseAdvanceAccountCommandHandler> _logger;
+    private readonly ICurrentUserService _currentUserService;
 
     public UseAdvanceAccountCommandHandler(
         IApplicationDbContext context,
-        ILogger<UseAdvanceAccountCommandHandler> logger)
+        ILogger<UseAdvanceAccountCommandHandler> logger,
+        ICurrentUserService currentUserService)
     {
         _context = context;
         _logger = logger;
+        _currentUserService = currentUserService;
     }
 
     public async Task<Result<AdvanceAccountUsageDto>> Handle(
         UseAdvanceAccountCommand request, 
         CancellationToken cancellationToken)
     {
+        // Internal roles (admin, manager, dataentry) can operate. 
+        // Observers are read-only. External roles (Tenants) resolved via claims.
+        var effectiveTenantId = request.TenantId;
+
+        if (!_currentUserService.IsAdmin && !_currentUserService.IsManager && !_currentUserService.IsDataEntry)
+        {
+            // If external tenant, override with their own identity
+            if (_currentUserService.TenantId.HasValue)
+            {
+                effectiveTenantId = _currentUserService.TenantId.Value;
+            }
+            else
+            {
+                return Result<AdvanceAccountUsageDto>.Failure("Bu işlemi yapmaya yetkiniz yok.");
+            }
+        }
+
         using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
         
         try
         {
             // 1. Avans hesabını kontrol et
             var advanceAccount = await _context.AdvanceAccounts
-                .FirstOrDefaultAsync(aa => aa.TenantId == request.TenantId && !aa.IsDeleted, cancellationToken);
+                .FirstOrDefaultAsync(aa => aa.TenantId == effectiveTenantId && !aa.IsDeleted, cancellationToken);
 
             if (advanceAccount == null)
             {
@@ -66,7 +86,7 @@ public class UseAdvanceAccountCommandHandler
                 PaymentDate = DateTime.UtcNow,
                 Description = request.Description ?? "Avans hesabından borç ödeme",
                 ReceiptNumber = $"AVANS-{DateTime.UtcNow:yyyyMMdd-HHmmss}",
-                TenantId = request.TenantId,
+                TenantId = effectiveTenantId,
                 CreatedAt = DateTime.UtcNow
             };
 
@@ -87,7 +107,7 @@ public class UseAdvanceAccountCommandHandler
                     return Result<AdvanceAccountUsageDto>.Failure($"Borç bulunamadı: {debtPayment.DebtId}");
                 }
 
-                if (debt.TenantId != request.TenantId)
+                if (debt.TenantId != effectiveTenantId)
                 {
                     await transaction.RollbackAsync(cancellationToken);
                     return Result<AdvanceAccountUsageDto>.Failure($"Borç bu kiracıya ait değil: {debtPayment.DebtId}");
@@ -140,7 +160,7 @@ public class UseAdvanceAccountCommandHandler
             var result = new AdvanceAccountUsageDto
             {
                 PaymentId = virtualPayment.Id,
-                TenantId = request.TenantId,
+                TenantId = effectiveTenantId,
                 TotalAmount = totalRequestedAmount,
                 PreviousBalance = advanceAccount.Balance + totalRequestedAmount,
                 NewBalance = advanceAccount.Balance,

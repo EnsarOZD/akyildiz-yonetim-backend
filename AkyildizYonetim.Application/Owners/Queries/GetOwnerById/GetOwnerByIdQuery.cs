@@ -14,14 +14,25 @@ public record GetOwnerByIdQuery : IRequest<Result<OwnerDto>>
 public class GetOwnerByIdQueryHandler : IRequestHandler<GetOwnerByIdQuery, Result<OwnerDto>>
 {
     private readonly IApplicationDbContext _context;
+    private readonly ICurrentUserService _currentUserService;
 
-    public GetOwnerByIdQueryHandler(IApplicationDbContext context)
+    public GetOwnerByIdQueryHandler(IApplicationDbContext context, ICurrentUserService currentUserService)
     {
         _context = context;
+        _currentUserService = currentUserService;
     }
 
     public async Task<Result<OwnerDto>> Handle(GetOwnerByIdQuery request, CancellationToken cancellationToken)
     {
+        // Isolate access for non-admin/manager roles
+        if (!_currentUserService.IsAdmin && !_currentUserService.IsManager)
+        {
+            if (_currentUserService.OwnerId != request.Id)
+            {
+                return Result<OwnerDto>.Failure("Bu mal sahibi verisine erişim yetkiniz yok.");
+            }
+        }
+
         var owner = await _context.Owners
             .Where(o => o.Id == request.Id && !o.IsDeleted)
             .Select(o => new OwnerDto

@@ -14,13 +14,23 @@ public class UseAdvanceAccountCommandTests
 {
     private readonly Mock<IApplicationDbContext> _mockContext;
     private readonly Mock<ILogger<UseAdvanceAccountCommandHandler>> _mockLogger;
+    private readonly Mock<ICurrentUserService> _mockUserService;
     private readonly UseAdvanceAccountCommandHandler _handler;
 
     public UseAdvanceAccountCommandTests()
     {
         _mockContext = new Mock<IApplicationDbContext>();
         _mockLogger = new Mock<ILogger<UseAdvanceAccountCommandHandler>>();
-        _handler = new UseAdvanceAccountCommandHandler(_mockContext.Object, _mockLogger.Object);
+        _mockUserService = new Mock<ICurrentUserService>();
+        
+        // Default to Admin to keep existing tests working
+        _mockUserService.Setup(s => s.IsAdmin).Returns(true);
+        _mockUserService.Setup(s => s.IsManager).Returns(true);
+        _mockUserService.Setup(s => s.IsDataEntry).Returns(true);
+
+        _mockContext.Setup(c => c.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
+        
+        _handler = new UseAdvanceAccountCommandHandler(_mockContext.Object, _mockLogger.Object, _mockUserService.Object);
     }
 
     [Fact]
@@ -173,6 +183,8 @@ public class UseAdvanceAccountCommandTests
 
         _mockContext.Setup(c => c.AdvanceAccounts).Returns(mockAdvanceAccounts.Object);
         _mockContext.Setup(c => c.UtilityDebts).Returns(mockDebts.Object);
+        _mockContext.Setup(c => c.Payments).Returns(GetMockDbSet(new List<Payment>()).Object);
+        _mockContext.Setup(c => c.PaymentDebts).Returns(GetMockDbSet(new List<PaymentDebt>()).Object);
         _mockContext.Setup(c => c.Database).Returns(GetMockDatabase().Object);
 
         // Act

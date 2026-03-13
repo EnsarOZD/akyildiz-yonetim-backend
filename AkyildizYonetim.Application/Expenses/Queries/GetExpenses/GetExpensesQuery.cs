@@ -1,32 +1,45 @@
 using AkyildizYonetim.Application.Common.Interfaces;
 using AkyildizYonetim.Application.Common.Models;
+using AkyildizYonetim.Application.Common.Extensions;
 using AkyildizYonetim.Domain.Entities;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
 namespace AkyildizYonetim.Application.Expenses.Queries.GetExpenses;
 
-public record GetExpensesQuery : IRequest<Result<List<ExpenseDto>>>
+public record GetExpensesQuery : IRequest<Result<PagedResult<ExpenseDto>>>
 {
     public ExpenseType? Type { get; init; }
     public Guid? OwnerId { get; init; }
     public DateTime? StartDate { get; init; }
     public DateTime? EndDate { get; init; }
     public string? SearchTerm { get; init; }
+    public int PageNumber { get; init; } = 1;
+    public int PageSize { get; init; } = 20;
 }
 
-public class GetExpensesQueryHandler : IRequestHandler<GetExpensesQuery, Result<List<ExpenseDto>>>
+public class GetExpensesQueryHandler : IRequestHandler<GetExpensesQuery, Result<PagedResult<ExpenseDto>>>
 {
     private readonly IApplicationDbContext _context;
+    private readonly ICurrentUserService _currentUserService;
 
-    public GetExpensesQueryHandler(IApplicationDbContext context)
+    public GetExpensesQueryHandler(IApplicationDbContext context, ICurrentUserService currentUserService)
     {
         _context = context;
+        _currentUserService = currentUserService;
     }
 
-    public async Task<Result<List<ExpenseDto>>> Handle(GetExpensesQuery request, CancellationToken cancellationToken)
+    public async Task<Result<PagedResult<ExpenseDto>>> Handle(GetExpensesQuery request, CancellationToken cancellationToken)
     {
+        // Defense-in-depth: FinanceRead policy is the primary gate (Admin/Manager).
+        // If somehow an external user reaches this handler, we explicitly reject.
+        if (DataScopeHelper.IsScopeRestricted(_currentUserService, u => u.IsAdmin, u => u.IsManager))
+        {
+            return Result<PagedResult<ExpenseDto>>.Success(new PagedResult<ExpenseDto>());
+        }
+
         var query = _context.Expenses
+            .AsNoTracking()
             .Where(e => !e.IsDeleted)
             .AsQueryable();
 
@@ -53,6 +66,7 @@ public class GetExpensesQueryHandler : IRequestHandler<GetExpensesQuery, Result<
 
         var expenses = await query
             .OrderByDescending(e => e.ExpenseDate)
+            .ThenByDescending(e => e.Id)
             .Select(e => new ExpenseDto
             {
                 Id = e.Id,
@@ -66,9 +80,9 @@ public class GetExpensesQueryHandler : IRequestHandler<GetExpensesQuery, Result<
                 CreatedAt = e.CreatedAt,
                 UpdatedAt = e.UpdatedAt
             })
-            .ToListAsync(cancellationToken);
-
-        return Result<List<ExpenseDto>>.Success(expenses);
+            .ToPagedResultAsync(request.PageNumber, request.PageSize, cancellationToken);
+ 
+        return Result<PagedResult<ExpenseDto>>.Success(expenses);
     }
 }
 

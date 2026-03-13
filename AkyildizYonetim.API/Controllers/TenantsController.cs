@@ -6,6 +6,7 @@ using AkyildizYonetim.Application.Tenants.Queries.GetTenants;
 using AkyildizYonetim.Application.Tenants.Queries.GetTenantStats;
 using AkyildizYonetim.Application.Tenants.Queries.GetAvailableFlats;
 using AkyildizYonetim.Application.DTOs;
+using AkyildizYonetim.Application.Common.Models;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
@@ -21,25 +22,30 @@ public class TenantsController : ControllerBase
 	public TenantsController(IMediator mediator) { _mediator = mediator; }
 
 	[HttpGet]
-	[ProducesResponseType(typeof(List<TenantDto>), 200)]
+	[ProducesResponseType(typeof(PagedResult<TenantDto>), 200)]
 	public async Task<IActionResult> GetTenants(
 		[FromQuery] bool? isActive,
 		[FromQuery] string? searchTerm,
 		[FromQuery] bool? showOnlyOccupied,
-		[FromQuery(Name = "floor")] int? floorNumber) // geriye dönük: ?floor=
+		[FromQuery(Name = "floor")] int? floorNumber,
+		[FromQuery] int pageNumber = 1,
+		[FromQuery] int pageSize = 20)
 	{
 		var result = await _mediator.Send(new GetTenantsQuery
 		{
 			IsActive = isActive,
 			SearchTerm = searchTerm,
 			ShowOnlyOccupied = showOnlyOccupied,
-			FloorNumber = floorNumber
+			FloorNumber = floorNumber,
+			PageNumber = pageNumber,
+			PageSize = pageSize
 		});
 		return result.IsSuccess
 			? Ok(result.Data)
 			: BadRequest(result.ErrorMessage ?? string.Join(", ", result.Errors));
 	}
 
+	[Authorize(Policy = "FinanceRead")]
 	[HttpGet("stats")]
 	public async Task<IActionResult> GetTenantStats()
 	{

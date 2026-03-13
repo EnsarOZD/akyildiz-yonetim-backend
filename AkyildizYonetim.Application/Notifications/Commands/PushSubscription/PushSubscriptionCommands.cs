@@ -16,6 +16,7 @@ public record SubscribePushCommand : IRequest<Result>
 
 public record UnsubscribePushCommand : IRequest<Result>
 {
+    public Guid UserId { get; init; }
     public string Endpoint { get; init; } = string.Empty;
 }
 
@@ -62,7 +63,7 @@ public class PushSubscriptionCommandHandler :
     public async Task<Result> Handle(UnsubscribePushCommand request, CancellationToken cancellationToken)
     {
         var subscription = await _context.UserPushSubscriptions
-            .FirstOrDefaultAsync(s => s.Endpoint == request.Endpoint, cancellationToken);
+            .FirstOrDefaultAsync(s => s.Endpoint == request.Endpoint && s.UserId == request.UserId, cancellationToken);
 
         if (subscription != null)
         {

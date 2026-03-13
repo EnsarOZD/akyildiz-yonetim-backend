@@ -20,18 +20,18 @@ public class DeleteUtilityDebtCommandHandler : IRequestHandler<DeleteUtilityDebt
         var debt = await _context.UtilityDebts
             .Include(d => d.PaymentDebts)
                 .ThenInclude(pd => pd.Payment)
-            .FirstOrDefaultAsync(d => d.Id == request.Id && !d.IsDeleted, cancellationToken);
+            .FirstOrDefaultAsync(d => d.Id == request.Id, cancellationToken);
 
         if (debt == null)
             return Result.Failure("Borç kaydı bulunamadı.");
 
         // 1. Avans iadesi kontrolü (Eğer avans ile ödendiyse)
-        foreach (var pd in debt.PaymentDebts.Where(x => !x.IsDeleted))
+        foreach (var pd in debt.PaymentDebts)
         {
             if (pd.Payment.ReceiptNumber?.StartsWith("AVANS-") == true && debt.TenantId.HasValue)
             {
                 var advanceAccount = await _context.AdvanceAccounts
-                    .FirstOrDefaultAsync(aa => aa.TenantId == debt.TenantId.Value && !aa.IsDeleted, cancellationToken);
+                    .FirstOrDefaultAsync(aa => aa.TenantId == debt.TenantId.Value, cancellationToken);
                 
                 if (advanceAccount != null)
                 {
@@ -41,12 +41,10 @@ public class DeleteUtilityDebtCommandHandler : IRequestHandler<DeleteUtilityDebt
             }
             
             // PaymentDebt kaydını da sil
-            pd.IsDeleted = true;
-            pd.UpdatedAt = DateTime.UtcNow;
+            _context.PaymentDebts.Remove(pd);
         }
 
-        debt.IsDeleted = true;
-        debt.UpdatedAt = DateTime.UtcNow;
+        _context.UtilityDebts.Remove(debt);
 
         await _context.SaveChangesAsync(cancellationToken);
         return Result.Success();

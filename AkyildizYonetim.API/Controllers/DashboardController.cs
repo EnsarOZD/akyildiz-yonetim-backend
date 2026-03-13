@@ -17,6 +17,7 @@ public class DashboardController : ControllerBase
         _mediator = mediator;
     }
 
+    [Authorize(Policy = "FinanceRead")]
     [HttpGet("debts-summary")]
     public async Task<IActionResult> GetDebtsSummary()
     {

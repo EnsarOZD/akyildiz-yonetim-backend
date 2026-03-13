@@ -22,15 +22,14 @@ public class DeleteOwnerCommandHandler : IRequestHandler<DeleteOwnerCommand, Res
     public async Task<Result> Handle(DeleteOwnerCommand request, CancellationToken cancellationToken)
     {
         var owner = await _context.Owners
-            .FirstOrDefaultAsync(o => o.Id == request.Id && !o.IsDeleted, cancellationToken);
+            .FirstOrDefaultAsync(o => o.Id == request.Id, cancellationToken);
 
         if (owner == null)
         {
             return Result.Failure("Ev sahibi bulunamadı.");
         }
 
-        owner.IsDeleted = true;
-        owner.UpdatedAt = DateTime.UtcNow;
+        _context.Owners.Remove(owner);
 
         await _context.SaveChangesAsync(cancellationToken);
 

@@ -23,13 +23,12 @@ public class DeleteAidatDefinitionCommandHandler : IRequestHandler<DeleteAidatDe
     public async Task<Result> Handle(DeleteAidatDefinitionCommand request, CancellationToken cancellationToken)
     {
         var aidatDefinition = await _context.AidatDefinitions
-            .FirstOrDefaultAsync(ad => ad.Id == request.Id && !ad.IsDeleted, cancellationToken);
+            .FirstOrDefaultAsync(ad => ad.Id == request.Id, cancellationToken);
 
         if (aidatDefinition == null)
             return Result.Failure("Aidat tanımı bulunamadı.");
 
-        aidatDefinition.IsDeleted = true;
-        aidatDefinition.UpdatedAt = DateTime.UtcNow;
+        _context.AidatDefinitions.Remove(aidatDefinition);
 
         await _context.SaveChangesAsync(cancellationToken);
 

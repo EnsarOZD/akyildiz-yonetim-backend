@@ -5,6 +5,9 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Moq;
+using AkyildizYonetim.Application.Common.Interfaces;
+using Microsoft.Extensions.Configuration;
 
 namespace AkyildizYonetim.Tests.Integration;
 
@@ -15,6 +18,17 @@ public class TestBase
         return new WebApplicationFactory<Program>()
             .WithWebHostBuilder(builder =>
             {
+                builder.ConfigureAppConfiguration((context, config) =>
+                {
+                    config.AddInMemoryCollection(new Dictionary<string, string?>
+                    {
+                        { "JwtSettings:SecretKey", "ThisIsAVeryLongDummySecretKeyForTestingPurposes" },
+                        { "JwtSettings:Issuer", "TestIssuer" },
+                        { "JwtSettings:Audience", "TestAudience" },
+                        { "JwtSettings:ExpirationInMinutes", "60" }
+                    });
+                });
+
                 builder.ConfigureServices(services =>
                 {
                     // In-memory database kullan
@@ -28,6 +42,17 @@ public class TestBase
                     {
                         options.UseInMemoryDatabase("TestDb");
                     });
+
+                    // Mock ICurrentUserService
+                    var userServiceDescriptor = services.SingleOrDefault(
+                        d => d.ServiceType == typeof(ICurrentUserService));
+                    if (userServiceDescriptor != null) services.Remove(userServiceDescriptor);
+
+                    var mockUserService = new Mock<ICurrentUserService>();
+                    mockUserService.Setup(s => s.IsAdmin).Returns(true);
+                    mockUserService.Setup(s => s.IsManager).Returns(true);
+                    mockUserService.Setup(s => s.IsDataEntry).Returns(true);
+                    services.AddScoped(_ => mockUserService.Object);
 
                     // Logging'i devre dışı bırak
                     services.AddLogging(logging =>
@@ -47,7 +72,12 @@ public class TestBase
             .UseInMemoryDatabase("TestDb")
             .Options;
 
-        var context = new ApplicationDbContext(options);
+        var mockUserService = new Mock<ICurrentUserService>();
+        mockUserService.Setup(s => s.IsAdmin).Returns(true);
+        mockUserService.Setup(s => s.IsManager).Returns(true);
+        mockUserService.Setup(s => s.IsDataEntry).Returns(true);
+
+        var context = new ApplicationDbContext(options, mockUserService.Object);
         await context.Database.EnsureCreatedAsync();
         return context;
     }

@@ -3,6 +3,8 @@ using AkyildizYonetim.Application.Owners.Commands.DeleteOwner;
 using AkyildizYonetim.Application.Owners.Commands.UpdateOwner;
 using AkyildizYonetim.Application.Owners.Queries.GetOwnerById;
 using AkyildizYonetim.Application.Owners.Queries.GetOwners;
+using AkyildizYonetim.Application.DTOs;
+using AkyildizYonetim.Application.Common.Models;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
@@ -22,9 +24,20 @@ public class OwnersController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetOwners([FromQuery] bool? isActive, [FromQuery] string? searchTerm)
+    [ProducesResponseType(typeof(PagedResult<OwnerDto>), 200)]
+    public async Task<IActionResult> GetOwners(
+        [FromQuery] bool? isActive, 
+        [FromQuery] string? searchTerm,
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 20)
     {
-        var result = await _mediator.Send(new GetOwnersQuery { IsActive = isActive, SearchTerm = searchTerm });
+        var result = await _mediator.Send(new GetOwnersQuery 
+        { 
+            IsActive = isActive, 
+            SearchTerm = searchTerm,
+            PageNumber = pageNumber,
+            PageSize = pageSize
+        });
         return result.IsSuccess ? Ok(result.Data) : BadRequest(result.ErrorMessage ?? string.Join(", ", result.Errors));
     }
 

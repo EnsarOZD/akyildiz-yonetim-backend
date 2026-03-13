@@ -4,6 +4,7 @@ using AkyildizYonetim.Application.Payments.Commands.UpdatePayment;
 using AkyildizYonetim.Application.Payments.Queries.GetPaymentById;
 using AkyildizYonetim.Application.Payments.Queries.GetPayments;
 using AkyildizYonetim.Application.DTOs;
+using AkyildizYonetim.Application.Common.Models;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
@@ -38,7 +39,7 @@ public class PaymentsController : ControllerBase
     /// <param name="endDate">Bitiş tarihi</param>
     /// <returns>Ödeme listesi</returns>
     [HttpGet]
-    [ProducesResponseType(typeof(List<PaymentDto>), 200)]
+    [ProducesResponseType(typeof(PagedResult<PaymentDto>), 200)]
     [ProducesResponseType(typeof(object), 400)]
     [ProducesResponseType(typeof(object), 500)]
     public async Task<IActionResult> GetPayments(
@@ -48,7 +49,9 @@ public class PaymentsController : ControllerBase
         [FromQuery] string? tenantId,
         [FromQuery] DateTime? startDate,
         [FromQuery] DateTime? endDate,
-        [FromQuery] bool excludeAdvanceUse = false)
+        [FromQuery] bool excludeAdvanceUse = false,
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 20)
     {
         Guid? ownerGuid = null;
         if (Guid.TryParse(ownerId, out var parsedOwnerId)) ownerGuid = parsedOwnerId;
@@ -64,7 +67,9 @@ public class PaymentsController : ControllerBase
             TenantId = tenantGuid,
             StartDate = startDate,
             EndDate = endDate,
-            ExcludeAdvanceUse = excludeAdvanceUse
+            ExcludeAdvanceUse = excludeAdvanceUse,
+            PageNumber = pageNumber,
+            PageSize = pageSize
         });
 
         return result.IsSuccess 

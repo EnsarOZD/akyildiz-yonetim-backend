@@ -1,20 +1,23 @@
 using AkyildizYonetim.Application.Common.Interfaces;
 using AkyildizYonetim.Application.Common.Models;
+using AkyildizYonetim.Application.Common.Extensions;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using AkyildizYonetim.Application.DTOs;
 
 namespace AkyildizYonetim.Application.Tenants.Queries.GetTenants
 {
-    public record GetTenantsQuery : IRequest<Result<List<TenantDto>>>
+    public record GetTenantsQuery : IRequest<Result<PagedResult<TenantDto>>>
     {
         public bool? IsActive { get; init; }
         public string? SearchTerm { get; init; }
         public bool? ShowOnlyOccupied { get; init; }
         public int? FloorNumber { get; init; }
+        public int PageNumber { get; init; } = 1;
+        public int PageSize { get; init; } = 20;
     }
 
-    public class GetTenantsQueryHandler : IRequestHandler<GetTenantsQuery, Result<List<TenantDto>>>
+    public class GetTenantsQueryHandler : IRequestHandler<GetTenantsQuery, Result<PagedResult<TenantDto>>>
     {
         private readonly IApplicationDbContext _context;
         private readonly ICurrentUserService _currentUserService;
@@ -25,7 +28,7 @@ namespace AkyildizYonetim.Application.Tenants.Queries.GetTenants
             _currentUserService = currentUserService;
         }
 
-        public async Task<Result<List<TenantDto>>> Handle(GetTenantsQuery request, CancellationToken ct)
+        public async Task<Result<PagedResult<TenantDto>>> Handle(GetTenantsQuery request, CancellationToken ct)
         {
             var q = _context.Tenants
                 .AsNoTracking()
@@ -42,13 +45,11 @@ namespace AkyildizYonetim.Application.Tenants.Queries.GetTenants
                 }
                 else if (_currentUserService.OwnerId.HasValue)
                 {
-                    // Mal sahibi kendi ünitelerindeki kiracıları görebilir mi? 
-                    // İş hanı yönetimi senaryosunda genellikle evet.
                     q = q.Where(t => t.Flats.Any(f => f.OwnerId == _currentUserService.OwnerId.Value));
                 }
                 else
                 {
-                    return Result<List<TenantDto>>.Success(new List<TenantDto>());
+                    return Result<PagedResult<TenantDto>>.Success(new PagedResult<TenantDto>());
                 }
             }
 
@@ -80,7 +81,9 @@ namespace AkyildizYonetim.Application.Tenants.Queries.GetTenants
                 q = q.Where(t => t.Flats.Any(f => !f.IsDeleted && f.FloorNumber == floor));
             }
 
-            var tenants = await q
+            var pagedTenants = await q
+                .OrderBy(t => t.CompanyName ?? t.ContactPersonName)
+                .ThenBy(t => t.Id) // Stable sort
                 .Select(t => new TenantDto
                 {
                     Id = t.Id,
@@ -120,9 +123,9 @@ namespace AkyildizYonetim.Application.Tenants.Queries.GetTenants
                         })
                         .ToList()
                 })
-                .ToListAsync(ct);
+                .ToPagedResultAsync(request.PageNumber, request.PageSize, ct);
 
-            return Result<List<TenantDto>>.Success(tenants);
+            return Result<PagedResult<TenantDto>>.Success(pagedTenants);
         }
     }
 }

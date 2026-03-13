@@ -24,12 +24,28 @@ public record UpdateUtilityDebtCommand : IRequest<Result>
 public class UpdateUtilityDebtCommandHandler : IRequestHandler<UpdateUtilityDebtCommand, Result>
 {
     private readonly IApplicationDbContext _context;
-    public UpdateUtilityDebtCommandHandler(IApplicationDbContext context) { _context = context; }
+    private readonly ICurrentUserService _currentUserService;
+
+    public UpdateUtilityDebtCommandHandler(IApplicationDbContext context, ICurrentUserService currentUserService) 
+    { 
+        _context = context; 
+        _currentUserService = currentUserService;
+    }
+
     public async Task<Result> Handle(UpdateUtilityDebtCommand request, CancellationToken cancellationToken)
     {
-        var debt = await _context.UtilityDebts.FirstOrDefaultAsync(d => d.Id == request.Id && !d.IsDeleted, cancellationToken);
+        var debt = await _context.UtilityDebts.FirstOrDefaultAsync(d => d.Id == request.Id, cancellationToken);
         if (debt == null)
             return Result.Failure("Borç kaydı bulunamadı.");
+
+        // Isolate modification for non-admin/manager roles
+        if (!_currentUserService.IsAdmin && !_currentUserService.IsManager)
+        {
+            if (debt.TenantId != _currentUserService.TenantId && debt.OwnerId != _currentUserService.OwnerId)
+            {
+                return Result.Failure("Bu borç kaydını değiştirme yetkiniz yok.");
+            }
+        }
             
         debt.Amount = request.Amount;
         debt.Status = request.Status;

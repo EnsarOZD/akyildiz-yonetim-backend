@@ -1,5 +1,6 @@
 using AkyildizYonetim.Application.Common.Interfaces;
 using AkyildizYonetim.Application.Common.Models;
+using AkyildizYonetim.Application.Common.Extensions;
 using AkyildizYonetim.Domain.Entities;
 using AkyildizYonetim.Application.Payments.Queries.GetPaymentById;
 using MediatR;
@@ -36,13 +37,16 @@ public class CreatePaymentWithDebtAllocationCommandHandler
 {
     private readonly IApplicationDbContext _context;
     private readonly ILogger<CreatePaymentWithDebtAllocationCommandHandler> _logger;
+    private readonly ICurrentUserService _currentUserService;
 
     public CreatePaymentWithDebtAllocationCommandHandler(
         IApplicationDbContext context, 
-        ILogger<CreatePaymentWithDebtAllocationCommandHandler> logger)
+        ILogger<CreatePaymentWithDebtAllocationCommandHandler> logger,
+        ICurrentUserService currentUserService)
     {
         _context = context;
         _logger = logger;
+        _currentUserService = currentUserService;
     }
 
     public async Task<Result<PaymentWithAllocationDto>> Handle(
@@ -53,6 +57,21 @@ public class CreatePaymentWithDebtAllocationCommandHandler
         
         try
         {
+            // Data Scope Resolution
+            var fullAccessRoles = new Func<ICurrentUserService, bool>[] { 
+                u => u.IsAdmin, u => u.IsManager, u => u.IsDataEntry 
+            };
+
+            var effectiveTenantId = DataScopeHelper.ResolveTenantId(_currentUserService, request.TenantId, fullAccessRoles);
+            var effectiveOwnerId = DataScopeHelper.ResolveOwnerId(_currentUserService, request.OwnerId, fullAccessRoles);
+
+            if (DataScopeHelper.IsScopeRestricted(_currentUserService, fullAccessRoles))
+            {
+                // No need to check for empty result here as this is a command, 
+                // but we should ensure the request is not spoofing.
+                // The Resolve methods already handle the claim override.
+            }
+
             // 1. Ödeme oluştur
             var payment = new Payment
             {
@@ -63,8 +82,8 @@ public class CreatePaymentWithDebtAllocationCommandHandler
                 PaymentDate = request.PaymentDate,
                 Description = request.Description,
                 ReceiptNumber = request.ReceiptNumber,
-                OwnerId = request.OwnerId,
-                TenantId = request.TenantId,
+                OwnerId = effectiveOwnerId,
+                TenantId = effectiveTenantId,
                 CreatedAt = DateTime.UtcNow
             };
 
@@ -170,10 +189,10 @@ public class CreatePaymentWithDebtAllocationCommandHandler
             }
 
             // 4. Kalan miktar varsa avans hesabına ekle
-            if (remainingAmount > 0 && request.TenantId.HasValue)
+            if (remainingAmount > 0 && effectiveTenantId.HasValue)
             {
                 var advanceAccount = await _context.AdvanceAccounts
-                    .FirstOrDefaultAsync(aa => aa.TenantId == request.TenantId && !aa.IsDeleted, cancellationToken);
+                    .FirstOrDefaultAsync(aa => aa.TenantId == effectiveTenantId && !aa.IsDeleted, cancellationToken);
 
                 if (advanceAccount == null)
                 {
@@ -181,7 +200,7 @@ public class CreatePaymentWithDebtAllocationCommandHandler
                     advanceAccount = new AdvanceAccount
                     {
                         Id = Guid.NewGuid(),
-                        TenantId = request.TenantId.Value,
+                        TenantId = effectiveTenantId.Value,
                         Balance = remainingAmount,
                         CreatedAt = DateTime.UtcNow
                     };

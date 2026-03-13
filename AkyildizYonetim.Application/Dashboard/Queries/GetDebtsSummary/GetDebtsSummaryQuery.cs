@@ -24,65 +24,62 @@ public class GetDebtsSummaryQueryHandler
     {
         try
         {
-            // 1. Get all active unpaid utility debts
-            var debts = await _context.UtilityDebts
-                .Where(d => !d.IsDeleted && d.RemainingAmount > 0)
-                .Include(d => d.Flat)
+            // 1. Get all active unpaid utility debts with grouping and projection to avoid N+1
+            // We group by the entity that owes the debt (Tenant or Owner)
+            var debtsQuery = _context.UtilityDebts
+                .AsNoTracking()
+                .Where(d => !d.IsDeleted && d.RemainingAmount > 0);
+
+            // Fetch tenants and owners separately to avoid complex joins in a single query if preferred, 
+            // but a projection with subqueries for names is also efficient in EF Core since it generates a single SQL.
+            
+            var result = await debtsQuery
+                .GroupBy(d => d.TenantId ?? d.OwnerId)
+                .Where(g => g.Key != null)
+                .Select(g => new
+                {
+                    EntityId = g.Key!.Value,
+                    IsTenant = g.Any(d => d.TenantId == g.Key),
+                    FlatCodes = g.Select(d => d.Flat.Code).Distinct(),
+                    AidatDebt = g.Where(d => d.Type == DebtType.Aidat).Sum(d => d.RemainingAmount),
+                    ElectricityDebt = g.Where(d => d.Type == DebtType.Electricity).Sum(d => d.RemainingAmount),
+                    WaterDebt = g.Where(d => d.Type == DebtType.Water).Sum(d => d.RemainingAmount)
+                })
                 .ToListAsync(cancellationToken);
 
-            // 2. Group by TenantId (preferred) or OwnerId
-            var groupedDebts = debts
-                .GroupBy(d => d.TenantId.HasValue ? d.TenantId.Value : (d.OwnerId.HasValue ? d.OwnerId.Value : Guid.Empty))
-                .Where(g => g.Key != Guid.Empty)
-                .ToList();
+            // Now we need the display names. Since we might have many entities, we'll fetch them in batches.
+            var tenantIds = result.Where(x => x.IsTenant).Select(x => x.EntityId).ToList();
+            var ownerIds = result.Where(x => !x.IsTenant).Select(x => x.EntityId).ToList();
 
-            var result = new List<DebtsSummaryDto>();
+            var tenants = await _context.Tenants
+                .AsNoTracking()
+                .Where(t => tenantIds.Contains(t.Id))
+                .Select(t => new { t.Id, Name = !string.IsNullOrEmpty(t.CompanyName) ? t.CompanyName : t.ContactPersonName })
+                .ToDictionaryAsync(t => t.Id, t => t.Name, cancellationToken);
 
-            foreach (var group in groupedDebts)
+            var owners = await _context.Owners
+                .AsNoTracking()
+                .Where(o => ownerIds.Contains(o.Id))
+                .Select(o => new { o.Id, Name = o.FirstName + " " + o.LastName })
+                .ToDictionaryAsync(o => o.Id, o => o.Name, cancellationToken);
+
+            var finalResult = result.Select(x => new DebtsSummaryDto
             {
-                var id = group.Key;
-                var firstDebt = group.First();
-                
-                string displayName = "Bilinmiyor";
-                string entityType = "Unknown";
-                if (firstDebt.TenantId.HasValue && firstDebt.TenantId.Value == id)
-                {
-                    var tenant = await _context.Tenants.FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
-                    displayName = !string.IsNullOrEmpty(tenant?.CompanyName) ? tenant.CompanyName : (tenant?.ContactPersonName ?? "Bilinmeyen Kiracı");
-                    entityType = "Tenant";
-                }
-                else if (firstDebt.OwnerId.HasValue && firstDebt.OwnerId.Value == id)
-                {
-                    var owner = await _context.Owners.FirstOrDefaultAsync(o => o.Id == id, cancellationToken);
-                    displayName = owner != null ? $"{owner.FirstName} {owner.LastName}" : "Bilinmeyen Mal Sahibi";
-                    entityType = "Owner";
-                }
+                EntityId = x.EntityId,
+                EntityType = x.IsTenant ? "Tenant" : "Owner",
+                DisplayName = x.IsTenant 
+                    ? (tenants.TryGetValue(x.EntityId, out var tName) ? tName : "Bilinmeyen Kiracı")
+                    : (owners.TryGetValue(x.EntityId, out var oName) ? oName : "Bilinmeyen Mal Sahibi"),
+                ApartmentNumber = string.Join(", ", x.FlatCodes.OrderBy(c => c)),
+                AidatDebt = x.AidatDebt,
+                ElectricityDebt = x.ElectricityDebt,
+                WaterDebt = x.WaterDebt,
+                TotalDebt = x.AidatDebt + x.ElectricityDebt + x.WaterDebt
+            })
+            .OrderByDescending(x => x.TotalDebt)
+            .ToList();
 
-                // Collect all unique flat codes for this entity
-                var apartmentNumber = string.Join(", ", group
-                    .Select(d => d.Flat?.Code)
-                    .Where(code => !string.IsNullOrEmpty(code))
-                    .Distinct()
-                    .OrderBy(code => code));
-
-                var aidat = group.Where(d => d.Type == DebtType.Aidat).Sum(d => d.RemainingAmount);
-                var electricity = group.Where(d => d.Type == DebtType.Electricity).Sum(d => d.RemainingAmount);
-                var water = group.Where(d => d.Type == DebtType.Water).Sum(d => d.RemainingAmount);
-
-                result.Add(new DebtsSummaryDto
-                {
-                    EntityId = id,
-                    EntityType = entityType,
-                    DisplayName = displayName,
-                    ApartmentNumber = apartmentNumber,
-                    AidatDebt = aidat,
-                    ElectricityDebt = electricity,
-                    WaterDebt = water,
-                    TotalDebt = aidat + electricity + water
-                });
-            }
-
-            return Result<List<DebtsSummaryDto>>.Success(result.OrderByDescending(x => x.TotalDebt).ToList());
+            return Result<List<DebtsSummaryDto>>.Success(finalResult);
         }
         catch (Exception ex)
         {

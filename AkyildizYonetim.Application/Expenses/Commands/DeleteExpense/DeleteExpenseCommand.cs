@@ -22,13 +22,12 @@ public class DeleteExpenseCommandHandler : IRequestHandler<DeleteExpenseCommand,
     public async Task<Result> Handle(DeleteExpenseCommand request, CancellationToken cancellationToken)
     {
         var expense = await _context.Expenses
-            .FirstOrDefaultAsync(e => e.Id == request.Id && !e.IsDeleted, cancellationToken);
+            .FirstOrDefaultAsync(e => e.Id == request.Id, cancellationToken);
 
         if (expense == null)
             return Result.Failure("Gider bulunamadı.");
 
-        expense.IsDeleted = true;
-        expense.UpdatedAt = DateTime.UtcNow;
+        _context.Expenses.Remove(expense);
 
         await _context.SaveChangesAsync(cancellationToken);
 

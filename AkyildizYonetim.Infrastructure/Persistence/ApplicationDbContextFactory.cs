@@ -14,6 +14,18 @@ public class ApplicationDbContextFactory : IDesignTimeDbContextFactory<Applicati
         
         optionsBuilder.UseSqlServer(connectionString);
 
-        return new ApplicationDbContext(optionsBuilder.Options);
+        return new ApplicationDbContext(optionsBuilder.Options, new DesignTimeCurrentUserService());
     }
-} 
+
+    private class DesignTimeCurrentUserService : AkyildizYonetim.Application.Common.Interfaces.ICurrentUserService
+    {
+        public string? UserId => null;
+        public string? Role => null;
+        public Guid? TenantId => null;
+        public Guid? OwnerId => null;
+        public bool IsAdmin => false;
+        public bool IsManager => false;
+        public bool IsDataEntry => false;
+        public bool IsObserver => false;
+    }
+}

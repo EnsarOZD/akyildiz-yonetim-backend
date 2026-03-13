@@ -9,6 +9,7 @@ using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Logging;
+using AkyildizYonetim.Application.Common.Models;
 
 namespace AkyildizYonetim.API.Controllers;
 
@@ -27,27 +28,32 @@ public class AdvanceAccountsController : ControllerBase
     }
 
     [HttpGet]
+    [ProducesResponseType(typeof(PagedResult<AkyildizYonetim.Application.DTOs.AdvanceAccountDto>), 200)]
     public async Task<IActionResult> GetAdvanceAccounts(
         [FromQuery] Guid? tenantId,
-        [FromQuery] bool? activeOnly)
+        [FromQuery] bool? activeOnly,
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 20)
     {
         try
         {
-            _logger.LogInformation("Avans hesapları getiriliyor: TenantId={TenantId}, ActiveOnly={ActiveOnly}", 
-                tenantId, activeOnly);
-
+            _logger.LogInformation("Avans hesapları getiriliyor: TenantId={TenantId}, ActiveOnly={ActiveOnly}, Page={Page}, Size={Size}", 
+                tenantId, activeOnly, pageNumber, pageSize);
+ 
             var result = await _mediator.Send(new GetAdvanceAccountsQuery
             {
                 TenantId = tenantId,
-                ActiveOnly = activeOnly ?? true
+                ActiveOnly = activeOnly ?? true,
+                PageNumber = pageNumber,
+                PageSize = pageSize
             });
-
+ 
             if (result.IsSuccess)
             {
-                _logger.LogInformation("Avans hesapları başarıyla getirildi: Count={Count}", result.Data?.Count ?? 0);
+                _logger.LogInformation("Avans hesapları başarıyla getirildi: Total={Total}", result.Data?.TotalCount ?? 0);
                 return Ok(result.Data);
             }
-
+ 
             _logger.LogWarning("Avans hesapları getirilemedi: {Error}", result.ErrorMessage ?? string.Join(", ", result.Errors));
             return BadRequest(result.ErrorMessage ?? string.Join(", ", result.Errors));
         }

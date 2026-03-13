@@ -9,6 +9,7 @@ using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using System.Text.Json;
+using AkyildizYonetim.Application.Common.Models;
 
 namespace AkyildizYonetim.API.Controllers;
 
@@ -25,12 +26,15 @@ public class ExpensesController : ControllerBase
     }
 
     [HttpGet]
+    [ProducesResponseType(typeof(PagedResult<AkyildizYonetim.Application.Expenses.Queries.GetExpenses.ExpenseDto>), 200)]
     public async Task<IActionResult> GetExpenses(
         [FromQuery] ExpenseType? type,
         [FromQuery] Guid? ownerId,
         [FromQuery] DateTime? startDate,
         [FromQuery] DateTime? endDate,
-        [FromQuery] string? searchTerm)
+        [FromQuery] string? searchTerm,
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 20)
     {
         var result = await _mediator.Send(new GetExpensesQuery
         {
@@ -38,9 +42,11 @@ public class ExpensesController : ControllerBase
             OwnerId = ownerId,
             StartDate = startDate,
             EndDate = endDate,
-            SearchTerm = searchTerm
+            SearchTerm = searchTerm,
+            PageNumber = pageNumber,
+            PageSize = pageSize
         });
-
+ 
         return result.IsSuccess ? Ok(result.Data) : BadRequest(result.ErrorMessage ?? string.Join(", ", result.Errors));
     }
 

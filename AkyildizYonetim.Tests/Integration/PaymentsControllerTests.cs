@@ -18,7 +18,7 @@ public class PaymentsControllerTests : IClassFixture<WebApplicationFactory<Progr
 
     public PaymentsControllerTests(WebApplicationFactory<Program> factory)
     {
-        _factory = factory;
+        _factory = TestBase.CreateApplication();
         _context = TestBase.CreateDbContextAsync().Result;
     }
 

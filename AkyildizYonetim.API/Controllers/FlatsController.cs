@@ -55,7 +55,7 @@ public class FlatsController : ControllerBase
 			: NotFound(result.ErrorMessage ?? string.Join(", ", result.Errors));
 	}
 
-	// Body: CreateFlatDto
+	[Authorize(Policy = "FinanceWrite")]
 	[HttpPost]
 	public async Task<IActionResult> CreateFlat([FromBody] CreateFlatDto dto)
 	{
@@ -65,7 +65,7 @@ public class FlatsController : ControllerBase
 			: BadRequest(result.ErrorMessage ?? string.Join(", ", result.Errors));
 	}
 
-	// Body: UpdateFlatDto (route id ile DTO.Id eşitlenir)
+	[Authorize(Policy = "FinanceWrite")]
 	[HttpPut("{id:guid}")]
 	public async Task<IActionResult> UpdateFlat(Guid id, [FromBody] UpdateFlatDto dto)
 	{
@@ -77,6 +77,7 @@ public class FlatsController : ControllerBase
 			: BadRequest(result.ErrorMessage ?? string.Join(", ", result.Errors));
 	}
 
+	[Authorize(Policy = "FinanceWrite")]
 	[HttpDelete("{id:guid}")]
 	public async Task<IActionResult> DeleteFlat(Guid id)
 	{

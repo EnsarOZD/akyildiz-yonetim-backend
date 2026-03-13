@@ -6,6 +6,7 @@ using AkyildizYonetim.Application.AidatDefinitions.Queries.GetAidatDefinitions;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
+using AkyildizYonetim.Application.Common.Models;
 
 namespace AkyildizYonetim.API.Controllers;
 
@@ -22,20 +23,25 @@ public class AidatDefinitionsController : ControllerBase
     }
 
     [HttpGet]
+    [ProducesResponseType(typeof(PagedResult<AkyildizYonetim.Application.AidatDefinitions.Queries.GetAidatDefinitions.AidatDefinitionDto>), 200)]
     public async Task<IActionResult> GetAidatDefinitions(
         [FromQuery] Guid? tenantId,
         [FromQuery] int? year,
         [FromQuery] string? unit,
-        [FromQuery] bool? isActive)
+        [FromQuery] bool? isActive,
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 20)
     {
         var result = await _mediator.Send(new GetAidatDefinitionsQuery
         {
             TenantId = tenantId,
             Year = year,
             Unit = unit,
-            IsActive = isActive
+            IsActive = isActive,
+            PageNumber = pageNumber,
+            PageSize = pageSize
         });
-
+ 
         return result.IsSuccess ? Ok(result.Data) : BadRequest(result.ErrorMessage ?? string.Join(", ", result.Errors));
     }
 

@@ -35,30 +35,30 @@ public static class DataSeeder
             }
 
             // 2. Kiracılar
-            var tenantYigit = await GetOrCreateTenant(context, "YİĞİT HANDEMİR", "Şahıs", "10000000001", "Yiğit HANDEMİR", "yigithamdemir8@gmail.com", "5398129854");
-            var tenantIHC = await GetOrCreateTenant(context, "İHC DANIŞMANLIK HİZMETLERİ SAĞLIK TURİZMİ VE TİCARET LİMİTED ŞİRKETİ", "Sağlık Turizmi", "10000000002", "Deniz SÖNMEZ", "deniz.sonmez@estevienclinic.com", "5379543043");
-            var tenantGalore = await GetOrCreateTenant(context, "GALORE GIDA TİCARET LİMİTED ŞİRKETİ", "Gıda", "10000000003", "Cemal Kıkoglu", "cemalkiroglu@gmail.com", "5428476161");
-            var tenantGeosante = await GetOrCreateTenant(context, "GEOSANTE SAĞLIK ANONİM ŞİRKETİ", "Sağlık", "10000000004", "Sedef", "info@alphacpoliklinik.com.tr", "5384297107");
-            var tenantSapphire = await GetOrCreateTenant(context, "SAPPHIRE ÖZEL SAĞLIK HİZMETLERİ TURİZM VE TİCARET A.Ş", "Sağlık", "10000000005", "Emine SEZER", "dymedhairclinic@gmail.com", "5541164833");
-            var tenantResult = await GetOrCreateTenant(context, "RESULT TURİZM GAYRİMENKUL DANIŞMANLIK LİMİTED ŞİRKETİ", "Turizm/Gayrimenkul", "10000000006", "İrem BEKDAŞ", "resultturizm@gmail.com", "5333706086");
+            var tenantA = await GetOrCreateTenant(context, "TENANT A LIMITED", "Services", "10000000001", "Lead A", "contact.a@example.test", "0555 111 22 33");
+            var tenantB = await GetOrCreateTenant(context, "TENANT B SERVICES", "Consultancy", "10000000002", "Lead B", "contact.b@example.test", "0555 221 22 44");
+            var tenantC = await GetOrCreateTenant(context, "TENANT C FOOD", "Food", "10000000003", "Lead C", "contact.c@example.test", "0555 331 44 55");
+            var tenantD = await GetOrCreateTenant(context, "TENANT D HEALTH", "Health", "10000000004", "Lead D", "contact.d@example.test", "0555 441 55 66");
+            var tenantE = await GetOrCreateTenant(context, "TENANT E MEDICAL", "Health", "10000000005", "Lead E", "contact.e@example.test", "0555 551 66 77");
+            var tenantF = await GetOrCreateTenant(context, "TENANT F TOURISM", "Tourism", "10000000006", "Lead F", "contact.f@example.test", "0555 661 77 88");
 
             // 3. Daireler
             if (!await context.Flats.AnyAsync())
             {
                 var flats = new List<Flat>
                 {
-                    CreateFlat("-4", -4, owner.Id, tenantYigit.Id),
-                    CreateFlat("-1", -1, owner.Id, tenantIHC.Id),
-                    CreateFlat("0-A", 0, owner.Id, tenantGalore.Id),
+                    CreateFlat("-4", -4, owner.Id, tenantA.Id),
+                    CreateFlat("-1", -1, owner.Id, tenantB.Id),
+                    CreateFlat("0-A", 0, owner.Id, tenantC.Id),
                     CreateFlat("0-B", 0, owner.Id, null),
-                    CreateFlat("1", 1, owner.Id, tenantIHC.Id),
-                    CreateFlat("2", 2, owner.Id, tenantGeosante.Id),
-                    CreateFlat("3-B", 3, owner.Id, tenantSapphire.Id),
+                    CreateFlat("1", 1, owner.Id, tenantB.Id),
+                    CreateFlat("2", 2, owner.Id, tenantD.Id),
+                    CreateFlat("3-B", 3, owner.Id, tenantE.Id),
                     CreateFlat("3-A", 3, owner.Id, null),
                     CreateFlat("4", 4, owner.Id, null),
-                    CreateFlat("5", 5, owner.Id, tenantIHC.Id),
-                    CreateFlat("6", 6, owner.Id, tenantSapphire.Id),
-                    CreateFlat("7", 7, owner.Id, tenantResult.Id)
+                    CreateFlat("5", 5, owner.Id, tenantB.Id),
+                    CreateFlat("6", 6, owner.Id, tenantE.Id),
+                    CreateFlat("7", 7, owner.Id, tenantF.Id)
                 };
 
                 context.Flats.AddRange(flats);

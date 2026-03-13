@@ -13,7 +13,7 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace AkyildizYonetim.API.Controllers;
 
-[Authorize(Policy = "TenantWrite")]
+[Authorize(Roles = "admin,manager")]
 [ApiController]
 [Route("api/[controller]")]
 public class UsersController : ControllerBase
@@ -35,7 +35,7 @@ public class UsersController : ControllerBase
         _clientSettings = clientSettings.Value;
     }
 
-    [Authorize(Policy = "TenantWrite")]
+    [Authorize(Roles = "admin")]
     [HttpPost]
     public async Task<IActionResult> CreateUser([FromBody] CreateUserRequest request)
     {
@@ -90,7 +90,7 @@ public class UsersController : ControllerBase
         return Ok(users);
     }
 
-    [Authorize(Policy = "TenantWrite")]
+    [Authorize(Roles = "admin")]
     [HttpPut("{id}")]
     public async Task<IActionResult> UpdateUser(Guid id, [FromBody] UpdateUserRequest request)
     {
@@ -108,6 +108,7 @@ public class UsersController : ControllerBase
         return NoContent();
     }
 
+    [Authorize(Roles = "admin")]
     [HttpPost("{id}/reset-password")]
     public async Task<IActionResult> ResetPassword(Guid id, [FromServices] IAppUrlBuilder urlBuilder)
     {
@@ -131,6 +132,7 @@ public class UsersController : ControllerBase
         return Ok(new { message = "Şifre sıfırlama bağlantısı e-posta ile gönderildi." });
     }
 
+    [Authorize(Roles = "admin")]
     [HttpGet("debug")]
     public async Task<IActionResult> GetUsersDebug()
     {

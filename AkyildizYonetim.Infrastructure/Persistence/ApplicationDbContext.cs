@@ -1,3 +1,5 @@
+using System.Reflection;
+using System.Linq.Expressions;
 using AkyildizYonetim.Application.Common.Interfaces;
 using AkyildizYonetim.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -6,8 +8,13 @@ namespace AkyildizYonetim.Infrastructure.Persistence;
 
 public class ApplicationDbContext : DbContext, IApplicationDbContext
 {
-    public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options)
+    private readonly ICurrentUserService _currentUserService;
+
+    public ApplicationDbContext(
+        DbContextOptions<ApplicationDbContext> options,
+        ICurrentUserService currentUserService) : base(options)
     {
+        _currentUserService = currentUserService;
     }
 
     public DbSet<Owner> Owners => Set<Owner>();
@@ -28,19 +35,18 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(ApplicationDbContext).Assembly);
         
-        // Global query filter for soft delete
-        modelBuilder.Entity<Owner>().HasQueryFilter(e => !e.IsDeleted);
-        modelBuilder.Entity<Tenant>().HasQueryFilter(e => !e.IsDeleted);
-        modelBuilder.Entity<Payment>().HasQueryFilter(e => !e.IsDeleted);
-        modelBuilder.Entity<Expense>().HasQueryFilter(e => !e.IsDeleted);
-        modelBuilder.Entity<Flat>().HasQueryFilter(e => !e.IsDeleted);
-        modelBuilder.Entity<User>().HasQueryFilter(e => !e.IsDeleted);
-        modelBuilder.Entity<UtilityDebt>().HasQueryFilter(e => !e.IsDeleted);
-        modelBuilder.Entity<AdvanceAccount>().HasQueryFilter(e => !e.IsDeleted);
-        modelBuilder.Entity<PaymentDebt>().HasQueryFilter(e => !e.IsDeleted);
-        modelBuilder.Entity<AuditLog>().HasQueryFilter(e => !e.IsDeleted);
-        modelBuilder.Entity<Notification>().HasQueryFilter(e => !e.IsDeleted);
-        modelBuilder.Entity<UserPushSubscription>().HasQueryFilter(e => !e.IsDeleted);
+        // Global query filter for soft delete using reflection
+        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+        {
+            if (typeof(BaseEntity).IsAssignableFrom(entityType.ClrType) && !entityType.IsOwned() && !entityType.IsKeyless)
+            {
+                var parameter = Expression.Parameter(entityType.ClrType, "e");
+                var property = Expression.Property(parameter, nameof(BaseEntity.IsDeleted));
+                var lambda = Expression.Lambda(Expression.Not(property), parameter);
+
+                modelBuilder.Entity(entityType.ClrType).HasQueryFilter(lambda);
+            }
+        }
         
         // Ensure all DateTime properties are Utc
         var dateTimeConverter = new Microsoft.EntityFrameworkCore.Storage.ValueConversion.ValueConverter<DateTime, DateTime>(
@@ -69,7 +75,19 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
         base.OnModelCreating(modelBuilder);
     }
 
+    public override int SaveChanges()
+    {
+        OnBeforeSaving();
+        return base.SaveChanges();
+    }
+
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        OnBeforeSaving();
+        return base.SaveChangesAsync(cancellationToken);
+    }
+
+    private void OnBeforeSaving()
     {
         foreach (var entry in ChangeTracker.Entries<BaseEntity>())
         {
@@ -81,9 +99,16 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
                 case EntityState.Modified:
                     entry.Entity.UpdatedAt = DateTime.UtcNow;
                     break;
+                case EntityState.Deleted:
+                    entry.State = EntityState.Modified;
+                    if (!entry.Entity.IsDeleted)
+                    {
+                        entry.Entity.IsDeleted = true;
+                        entry.Entity.DeletedAt = DateTime.UtcNow;
+                        entry.Entity.DeletedByUserId = _currentUserService.UserId;
+                    }
+                    break;
             }
         }
-
-        return base.SaveChangesAsync(cancellationToken);
     }
-} 
+}
