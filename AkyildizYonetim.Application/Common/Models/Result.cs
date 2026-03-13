@@ -16,6 +16,16 @@ public class Result<T>
         };
     }
 
+    public static Result<T> Success(T data, string message)
+    {
+        return new Result<T>
+        {
+            IsSuccess = true,
+            Data = data,
+            ErrorMessage = message
+        };
+    }
+
     public static Result<T> Failure(string errorMessage)
     {
         return new Result<T>
@@ -46,6 +56,15 @@ public class Result
         return new Result
         {
             IsSuccess = true
+        };
+    }
+
+    public static Result Success(string message)
+    {
+        return new Result
+        {
+            IsSuccess = true,
+            ErrorMessage = message
         };
     }
 

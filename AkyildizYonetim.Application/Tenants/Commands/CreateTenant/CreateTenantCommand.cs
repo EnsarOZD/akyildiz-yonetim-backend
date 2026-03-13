@@ -97,11 +97,11 @@ public class CreateTenantCommandHandler : IRequestHandler<CreateTenantCommand, R
         else if (existing.IsDeleted)
         {
             existing.IsDeleted = false;
-            existing.CompanyName = request.CompanyName?.Trim();
-            existing.BusinessType = request.BusinessType?.Trim();
-            existing.ContactPersonName = request.ContactPersonName?.Trim();
-            existing.ContactPersonPhone = request.ContactPersonPhone?.Trim();
-            existing.ContactPersonEmail = request.ContactPersonEmail?.Trim();
+            existing.CompanyName = request.CompanyName?.Trim() ?? string.Empty;
+            existing.BusinessType = request.BusinessType?.Trim() ?? string.Empty;
+            existing.ContactPersonName = request.ContactPersonName?.Trim() ?? string.Empty;
+            existing.ContactPersonPhone = request.ContactPersonPhone?.Trim() ?? string.Empty;
+            existing.ContactPersonEmail = request.ContactPersonEmail?.Trim() ?? string.Empty;
             existing.MonthlyAidat = request.MonthlyAidat;
             existing.IsActive = request.IsActive;
             existing.UpdatedAt = DateTime.UtcNow;
