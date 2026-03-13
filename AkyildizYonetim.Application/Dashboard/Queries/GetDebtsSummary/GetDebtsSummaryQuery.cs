@@ -40,10 +40,10 @@ public class GetDebtsSummaryQueryHandler
                 {
                     EntityId = g.Key!.Value,
                     IsTenant = g.Any(d => d.TenantId == g.Key),
-                    FlatCodes = g.Select(d => d.Flat.Code).Distinct(),
-                    AidatDebt = g.Where(d => d.Type == DebtType.Aidat).Sum(d => d.RemainingAmount),
-                    ElectricityDebt = g.Where(d => d.Type == DebtType.Electricity).Sum(d => d.RemainingAmount),
-                    WaterDebt = g.Where(d => d.Type == DebtType.Water).Sum(d => d.RemainingAmount)
+                    FlatCodes = g.Select(d => d.Flat != null ? d.Flat.Code : "Bilinmiyor").Distinct(),
+                    AidatDebt = g.Where(d => d.Type == DebtType.Aidat).Sum(d => (decimal?)d.RemainingAmount) ?? 0,
+                    ElectricityDebt = g.Where(d => d.Type == DebtType.Electricity).Sum(d => (decimal?)d.RemainingAmount) ?? 0,
+                    WaterDebt = g.Where(d => d.Type == DebtType.Water).Sum(d => (decimal?)d.RemainingAmount) ?? 0
                 })
                 .ToListAsync(cancellationToken);
 
@@ -70,7 +70,7 @@ public class GetDebtsSummaryQueryHandler
                 DisplayName = x.IsTenant 
                     ? (tenants.TryGetValue(x.EntityId, out var tName) ? tName : "Bilinmeyen Kiracı")
                     : (owners.TryGetValue(x.EntityId, out var oName) ? oName : "Bilinmeyen Mal Sahibi"),
-                ApartmentNumber = string.Join(", ", x.FlatCodes.OrderBy(c => c)),
+                ApartmentNumber = string.Join(", ", x.FlatCodes.Where(f => f != null).OrderBy(c => c)),
                 AidatDebt = x.AidatDebt,
                 ElectricityDebt = x.ElectricityDebt,
                 WaterDebt = x.WaterDebt,
@@ -83,7 +83,9 @@ public class GetDebtsSummaryQueryHandler
         }
         catch (Exception ex)
         {
-            return Result<List<DebtsSummaryDto>>.Failure($"Borç özeti alınamadı: {ex.Message}");
+            // Log the detailed error for backend monitoring
+            Console.WriteLine($"[ERROR] GetDebtsSummaryQuery: {ex}");
+            return Result<List<DebtsSummaryDto>>.Failure($"Borç özeti alınamadı: {ex.Message} {ex.InnerException?.Message}");
         }
     }
 }
