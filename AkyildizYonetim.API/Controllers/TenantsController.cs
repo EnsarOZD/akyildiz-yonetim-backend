@@ -45,7 +45,6 @@ public class TenantsController : ControllerBase
 			: BadRequest(result.ErrorMessage ?? string.Join(", ", result.Errors));
 	}
 
-	[Authorize(Policy = "FinanceRead")]
 	[HttpGet("stats")]
 	public async Task<IActionResult> GetTenantStats()
 	{

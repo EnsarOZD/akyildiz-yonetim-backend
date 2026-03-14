@@ -48,6 +48,7 @@ public class CreateBulkUtilityDebtsCommandHandler : IRequestHandler<CreateBulkUt
                 DueDate = due,
                 PaidDate = req.PaidDate,
                 Description = req.Description,
+                InvoiceNumber = req.InvoiceNumber,
                 TenantId = req.TenantId,
                 OwnerId = req.OwnerId,
                 CreatedAt = DateTime.UtcNow

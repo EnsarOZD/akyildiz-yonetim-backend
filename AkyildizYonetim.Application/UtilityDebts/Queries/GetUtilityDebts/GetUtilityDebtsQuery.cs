@@ -97,6 +97,7 @@ public class GetUtilityDebtsQueryHandler : IRequestHandler<GetUtilityDebtsQuery,
                 PaidAmount = d.PaidAmount,
                 PaidDate = d.PaidDate,
                 Description = d.Description,
+                InvoiceNumber = d.InvoiceNumber,
                 TenantId = d.TenantId,
                 OwnerId = d.OwnerId,
                 CreatedAt = d.CreatedAt,
@@ -126,6 +127,7 @@ public class UtilityDebtDto
     public decimal RemainingAmount { get; set; }
     public DateTime DueDate { get; set; }
     public string? Description { get; set; }
+    public string? InvoiceNumber { get; set; }
     public Guid? TenantId { get; set; }
     public Guid? OwnerId { get; set; }
     public string? TenantName { get; set; }

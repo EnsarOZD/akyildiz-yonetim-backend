@@ -29,49 +29,59 @@ public class UpdateOwnerCommandHandler : IRequestHandler<UpdateOwnerCommand, Res
 
     public async Task<Result> Handle(UpdateOwnerCommand request, CancellationToken cancellationToken)
     {
-        var owner = await _context.Owners
-            .FirstOrDefaultAsync(o => o.Id == request.Id && !o.IsDeleted, cancellationToken);
-
-        if (owner == null)
+        try
         {
-            return Result.Failure("Ev sahibi bulunamadı.");
-        }
+            var owner = await _context.Owners
+                .FirstOrDefaultAsync(o => o.Id == request.Id && !o.IsDeleted, cancellationToken);
 
-        owner.FirstName = request.FirstName;
-        owner.LastName = request.LastName;
-        owner.PhoneNumber = request.PhoneNumber;
-        owner.Email = request.Email;
-        owner.ApartmentNumber = request.ApartmentNumber;
-        owner.MonthlyDues = request.MonthlyDues;
-        owner.IsActive = request.IsActive;
-        owner.UpdatedAt = DateTime.UtcNow;
-
-        // Katları güncelle
-        if (request.Flats != null)
-        {
-            // Mevcut atamaları temizle
-            var currentFlats = await _context.Flats
-                .Where(f => f.OwnerId == owner.Id)
-                .ToListAsync(cancellationToken);
-
-            foreach (var f in currentFlats)
+            if (owner == null)
             {
-                f.OwnerId = null;
+                return Result.Failure("Ev sahibi bulunamadı.");
             }
 
-            // Yeni seçilen katları ata
-            var newFlats = await _context.Flats
-                .Where(f => request.Flats.Contains(f.Code))
-                .ToListAsync(cancellationToken);
+            owner.FirstName = request.FirstName;
+            owner.LastName = request.LastName;
+            owner.PhoneNumber = request.PhoneNumber;
+            owner.Email = request.Email;
+            owner.ApartmentNumber = request.ApartmentNumber;
+            // Only update MonthlyDues if explicitly sent (non-zero), otherwise preserve existing
+            if (request.MonthlyDues > 0)
+                owner.MonthlyDues = request.MonthlyDues;
+            owner.IsActive = request.IsActive;
+            owner.UpdatedAt = DateTime.UtcNow;
 
-            foreach (var f in newFlats)
+            // Katları güncelle
+            if (request.Flats != null && request.Flats.Count > 0)
             {
-                f.OwnerId = owner.Id;
+                // Mevcut atamaları temizle
+                var currentFlats = await _context.Flats
+                    .Where(f => f.OwnerId == owner.Id && !f.IsDeleted)
+                    .ToListAsync(cancellationToken);
+
+                foreach (var f in currentFlats)
+                {
+                    f.OwnerId = null;
+                }
+
+                // Yeni seçilen katları ata
+                var newFlats = await _context.Flats
+                    .Where(f => request.Flats.Contains(f.Code) && !f.IsDeleted)
+                    .ToListAsync(cancellationToken);
+
+                foreach (var f in newFlats)
+                {
+                    f.OwnerId = owner.Id;
+                }
             }
+
+            await _context.SaveChangesAsync(cancellationToken);
+
+            return Result.Success();
         }
-
-        await _context.SaveChangesAsync(cancellationToken);
-
-        return Result.Success();
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[ERROR] UpdateOwnerCommand: {ex}");
+            return Result.Failure($"Mal sahibi güncellenemedi: {ex.Message} {ex.InnerException?.Message}");
+        }
     }
 }

@@ -18,6 +18,7 @@ public record CreateUtilityDebtCommand : IRequest<Result<Guid>>
     public DateTime DueDate { get; init; }
     public DateTime? PaidDate { get; init; }
     public string? Description { get; init; }
+    public string? InvoiceNumber { get; init; }
     public Guid? TenantId { get; init; }
     public Guid? OwnerId { get; init; }
 }
@@ -53,6 +54,7 @@ public class CreateUtilityDebtCommandHandler : IRequestHandler<CreateUtilityDebt
         DueDate = due,
         PaidDate = request.PaidDate,
         Description = request.Description,
+        InvoiceNumber = request.InvoiceNumber,
         TenantId = request.TenantId,
         OwnerId = request.OwnerId,
         CreatedAt = DateTime.UtcNow

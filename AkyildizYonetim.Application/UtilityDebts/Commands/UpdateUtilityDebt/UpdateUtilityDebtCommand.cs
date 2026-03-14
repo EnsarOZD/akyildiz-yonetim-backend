@@ -14,6 +14,7 @@ public record UpdateUtilityDebtCommand : IRequest<Result>
     public decimal? PaidAmount { get; init; }
     public DateTime? PaidDate { get; init; }
     public string? Description { get; init; }
+    public string? InvoiceNumber { get; init; }
     public Guid? TenantId { get; init; }
     public Guid? OwnerId { get; init; }
     public int PeriodYear { get; init; }
@@ -52,6 +53,7 @@ public class UpdateUtilityDebtCommandHandler : IRequestHandler<UpdateUtilityDebt
         debt.PaidAmount = request.PaidAmount;
         debt.PaidDate = request.PaidDate;
         debt.Description = request.Description;
+        debt.InvoiceNumber = request.InvoiceNumber;
         debt.TenantId = request.TenantId;
         debt.OwnerId = request.OwnerId;
         debt.PeriodYear = request.PeriodYear;

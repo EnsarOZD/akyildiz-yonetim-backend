@@ -1,5 +1,6 @@
 using AkyildizYonetim.Application.Common.Interfaces;
 using AkyildizYonetim.Application.Common.Models;
+using AkyildizYonetim.Domain.Entities;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -33,39 +34,27 @@ public class DeleteBulkPaymentsCommandHandler : IRequestHandler<DeleteBulkPaymen
 
         var paymentIds = payments.Select(x => x.Id).ToList();
 
-        // 1. Önce bu ödemelere ait AdvanceUsage kayıtlarını bul ve sil
-        var advanceUsages = await _context.AdvanceUsages
-            .Where(x => paymentIds.Contains(x.PaymentId))
+        // Find PaymentDebt junction records and restore debt remaining amounts
+        var paymentDebts = await _context.PaymentDebts
+            .Where(pd => paymentIds.Contains(pd.PaymentId))
+            .Include(pd => pd.Debt)
             .ToListAsync(cancellationToken);
 
-        if (advanceUsages.Any())
+        foreach (var pd in paymentDebts)
         {
-            _context.AdvanceUsages.RemoveRange(advanceUsages);
-        }
-
-        // 2. Ardından bu ödemelere ait DebtAllocation kayıtlarını bul
-        var allocations = await _context.DebtAllocations
-            .Where(x => paymentIds.Contains(x.PaymentId))
-            .Include(a => a.UtilityDebt)
-            .ToListAsync(cancellationToken);
-
-        if (allocations.Any())
-        {
-            // İlgili borçların kalan tutarlarını geri yükle
-            foreach (var allocation in allocations)
+            if (pd.Debt != null)
             {
-                if (allocation.UtilityDebt != null)
-                {
-                    allocation.UtilityDebt.RemainingAmount += allocation.Amount;
-                    allocation.UtilityDebt.Status = allocation.UtilityDebt.RemainingAmount >= allocation.UtilityDebt.Amount 
-                        ? Domain.Enums.DebtStatus.Unpaid 
-                        : Domain.Enums.DebtStatus.Partial;
-                }
+                pd.Debt.RemainingAmount += pd.PaidAmount;
+                pd.Debt.PaidAmount = (pd.Debt.PaidAmount ?? 0) - pd.PaidAmount;
+                if (pd.Debt.PaidAmount < 0) pd.Debt.PaidAmount = 0;
+
+                pd.Debt.Status = pd.Debt.RemainingAmount >= pd.Debt.Amount
+                    ? DebtStatus.Unpaid
+                    : (pd.Debt.RemainingAmount > 0 ? DebtStatus.Partial : DebtStatus.Paid);
             }
-            _context.DebtAllocations.RemoveRange(allocations);
         }
 
-        // Son olarak ödemeleri sil
+        _context.PaymentDebts.RemoveRange(paymentDebts);
         _context.Payments.RemoveRange(payments);
 
         await _context.SaveChangesAsync(cancellationToken);

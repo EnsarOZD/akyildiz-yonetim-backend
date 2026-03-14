@@ -86,6 +86,27 @@ public abstract class AuthTestBase : IClassFixture<WebApplicationFactory<Program
                 mockUserService.Setup(s => s.IsObserver).Returns(context.Role == "observer");
 
                 services.AddScoped(_ => mockUserService.Object);
+
+                // Mock IWebPushService so event handlers don't fail in tests
+                var webPushDescriptor = services.SingleOrDefault(d => d.ServiceType == typeof(IWebPushService));
+                if (webPushDescriptor != null) services.Remove(webPushDescriptor);
+                var mockWebPush = new Mock<IWebPushService>();
+                mockWebPush.Setup(s => s.SendNotificationAsync(
+                    It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
+                    It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
+                    .Returns(Task.CompletedTask);
+                services.AddScoped(_ => mockWebPush.Object);
+
+                // Mock INotificationService so email sending doesn't fail in tests
+                var notifDescriptor = services.SingleOrDefault(d => d.ServiceType == typeof(INotificationService));
+                if (notifDescriptor != null) services.Remove(notifDescriptor);
+                var mockNotifService = new Mock<INotificationService>();
+                mockNotifService.Setup(s => s.SendOverdueDebtReminderAsync(
+                    It.IsAny<Guid>(),
+                    It.IsAny<List<AkyildizYonetim.Domain.Entities.UtilityDebt>>(),
+                    It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                    .Returns(Task.CompletedTask);
+                services.AddScoped(_ => mockNotifService.Object);
             });
         }).CreateClient();
 

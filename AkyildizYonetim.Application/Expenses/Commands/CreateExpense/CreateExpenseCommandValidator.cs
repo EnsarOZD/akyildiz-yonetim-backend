@@ -18,7 +18,7 @@ public class CreateExpenseCommandValidator : AbstractValidator<CreateExpenseComm
 
         RuleFor(x => x.ExpenseDate)
             .NotEmpty().WithMessage("Tarih boş olamaz.")
-            .LessThanOrEqualTo(DateTime.Now.AddDays(1)).WithMessage("Tarih gelecekte olamaz.");
+            .Must(d => d <= DateTime.UtcNow.AddDays(1)).WithMessage("Tarih gelecekte olamaz.");
 
         RuleFor(x => x.Description)
             .MaximumLength(1000).WithMessage("Açıklama 1000 karakterden uzun olamaz.");

@@ -27,6 +27,7 @@ public class UtilityDebt : BaseEntity
     public DateTime DueDate { get; set; }
     public DateTime? PaidDate { get; set; }
     public string? Description { get; set; }
+    public string? InvoiceNumber { get; set; }
     public Guid? TenantId { get; set; }
     public Guid? OwnerId { get; set; }
     // Navigation
