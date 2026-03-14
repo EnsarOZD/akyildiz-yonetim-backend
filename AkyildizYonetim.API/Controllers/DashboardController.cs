@@ -19,9 +19,9 @@ public class DashboardController : ControllerBase
 
     [Authorize(Policy = "FinanceRead")]
     [HttpGet("debts-summary")]
-    public async Task<IActionResult> GetDebtsSummary()
+    public async Task<IActionResult> GetDebtsSummary([FromQuery] int? year)
     {
-        var result = await _mediator.Send(new GetDebtsSummaryQuery());
+        var result = await _mediator.Send(new GetDebtsSummaryQuery(year));
         return result.IsSuccess ? Ok(result.Data) : BadRequest(result.ErrorMessage ?? string.Join(", ", result.Errors));
     }
 }

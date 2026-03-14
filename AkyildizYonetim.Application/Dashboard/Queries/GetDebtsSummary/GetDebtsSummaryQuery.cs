@@ -6,7 +6,7 @@ using AkyildizYonetim.Domain.Entities;
 
 namespace AkyildizYonetim.Application.Dashboard.Queries.GetDebtsSummary;
 
-public record GetDebtsSummaryQuery : IRequest<Result<List<DebtsSummaryDto>>>;
+public record GetDebtsSummaryQuery(int? Year = null) : IRequest<Result<List<DebtsSummaryDto>>>;
 
 public class GetDebtsSummaryQueryHandler 
     : IRequestHandler<GetDebtsSummaryQuery, Result<List<DebtsSummaryDto>>>
@@ -29,6 +29,11 @@ public class GetDebtsSummaryQueryHandler
             var debtsQuery = _context.UtilityDebts
                 .AsNoTracking()
                 .Where(d => !d.IsDeleted && d.RemainingAmount > 0);
+
+            if (request.Year.HasValue)
+            {
+                debtsQuery = debtsQuery.Where(d => d.DueDate.Year == request.Year.Value || d.DueDate.Year == request.Year.Value);
+            }
 
             // Fetch tenants and owners separately to avoid complex joins in a single query if preferred, 
             // but a projection with subqueries for names is also efficient in EF Core since it generates a single SQL.
