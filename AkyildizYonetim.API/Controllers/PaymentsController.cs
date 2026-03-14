@@ -3,6 +3,7 @@ using AkyildizYonetim.Application.Payments.Commands.DeletePayment;
 using AkyildizYonetim.Application.Payments.Commands.UpdatePayment;
 using AkyildizYonetim.Application.Payments.Queries.GetPaymentById;
 using AkyildizYonetim.Application.Payments.Queries.GetPayments;
+using AkyildizYonetim.Application.Payments.Commands.DeleteBulkPayments;
 using AkyildizYonetim.Application.DTOs;
 using AkyildizYonetim.Application.Common.Models;
 using MediatR;
@@ -167,6 +168,24 @@ public class PaymentsController : ControllerBase
         return result.IsSuccess 
             ? NoContent() 
             : NotFound(result.ErrorMessage ?? string.Join(", ", result.Errors));
+    }
+
+    /// <summary>
+    /// Çoklu ödeme siler
+    /// </summary>
+    /// <param name="ids">Silinecek Ödeme ID Listesi</param>
+    /// <returns>Silme işlemi sonucu</returns>
+    [Authorize(Policy = "TenantWrite")]
+    [HttpDelete("bulk")]
+    [ProducesResponseType(204)]
+    [ProducesResponseType(typeof(object), 400)]
+    public async Task<IActionResult> DeleteBulkPayments([FromBody] List<Guid> ids)
+    {
+        if (ids == null || !ids.Any()) return BadRequest("Lütfen silinecek ödemeleri seçin.");
+
+        var command = new DeleteBulkPaymentsCommand { Ids = ids };
+        var result = await _mediator.Send(command);
+        return result.IsSuccess ? NoContent() : BadRequest(result.ErrorMessage ?? string.Join(", ", result.Errors));
     }
     
     /// <summary>

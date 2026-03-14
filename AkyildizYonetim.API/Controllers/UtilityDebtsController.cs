@@ -11,6 +11,7 @@ using AkyildizYonetim.Domain.Entities;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
+using AkyildizYonetim.Application.UtilityDebts.Commands.DeleteBulkUtilityDebts;
 
 namespace AkyildizYonetim.API.Controllers;
 
@@ -114,6 +115,17 @@ public class UtilityDebtsController : ControllerBase
     {
         var result = await _mediator.Send(new DeleteUtilityDebtCommand { Id = id });
         return result.IsSuccess ? NoContent() : NotFound(result.ErrorMessage ?? string.Join(", ", result.Errors));
+    }
+
+    [Authorize(Policy = "TenantWrite")]
+    [HttpDelete("bulk")]
+    public async Task<IActionResult> DeleteBulkUtilityDebts([FromBody] List<Guid> ids)
+    {
+        if (ids == null || !ids.Any()) return BadRequest("Lütfen silinecek kayıtları seçin.");
+        
+        var command = new DeleteBulkUtilityDebtsCommand { Ids = ids };
+        var result = await _mediator.Send(command);
+        return result.IsSuccess ? NoContent() : BadRequest(result.ErrorMessage ?? string.Join(", ", result.Errors));
     }
 
     [Authorize(Policy = "TenantWrite")]

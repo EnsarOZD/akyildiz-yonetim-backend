@@ -113,6 +113,36 @@ public class NotificationsController : ControllerBase
         var result = await _mediator.Send(command);
         return result.IsSuccess ? Ok() : BadRequest(result.ErrorMessage);
     }
+
+    [Authorize(Roles = "admin,manager")]
+    [HttpPost("targeted")]
+    public async Task<IActionResult> SendTargetedNotification([FromBody] TargetedNotificationRequest request)
+    {
+        // For now, map 'all' targets directly to a global broadcast.
+        if (request.TargetType == "all" || request.Type == "announcement")
+        {
+            var command = new AkyildizYonetim.Application.Notifications.Commands.PostAnnouncement.PostAnnouncementCommand
+            {
+                Title = request.Title,
+                Message = request.Message
+            };
+            var result = await _mediator.Send(command);
+            return result.IsSuccess ? Ok() : BadRequest(result.ErrorMessage);
+        }
+
+        // Targeted specifics (floor, tenant, debt) are placeholders for future implementation.
+        return BadRequest("Kişiye/Kata özel bildirimler ve borç hatırlatmaları yakında aktif edilecektir. Lütfen şimdilik 'Genel Duyuru' seçeneğini kullanın.");
+    }
+}
+
+public class TargetedNotificationRequest
+{
+    public string Title { get; set; } = string.Empty;
+    public string Message { get; set; } = string.Empty;
+    public string Type { get; set; } = "announcement"; // announcement, debt, private
+    public string TargetType { get; set; } = "all"; // all, floor, tenant
+    public int? TargetId { get; set; }
+    public int? DelayDays { get; set; }
 }
 
 public class PushSubscriptionRequest
