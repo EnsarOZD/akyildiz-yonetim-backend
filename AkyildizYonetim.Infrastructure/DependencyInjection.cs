@@ -29,6 +29,7 @@ public static class DependencyInjection
         services.AddScoped<IJwtService, JwtService>();
         services.AddScoped<IAppUrlBuilder, AkyildizYonetim.Infrastructure.Services.AppUrlBuilder>();
         services.AddScoped<IEmailSender, AkyildizYonetim.Infrastructure.Email.PostmarkEmailSender>();
+        services.AddScoped<INotificationService, AkyildizYonetim.Infrastructure.Notifications.EmailNotificationService>();
         services.AddScoped<IWebPushService, AkyildizYonetim.Infrastructure.Notifications.WebPushService>();
         services.AddScoped<IPasswordHasher, AkyildizYonetim.Infrastructure.Identity.PasswordHasher>();
         services.AddScoped<ILoginAttemptService, LoginAttemptService>();

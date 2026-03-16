@@ -19,10 +19,17 @@ public class DebtCreatedEventHandler : INotificationHandler<DebtCreatedEvent>
 
     public async Task Handle(DebtCreatedEvent notification, CancellationToken cancellationToken)
     {
+        // notification.UserId is actually TenantId — find the linked User account
+        var user = await _context.Users
+            .AsNoTracking()
+            .FirstOrDefaultAsync(u => u.TenantId == notification.UserId && u.IsActive, cancellationToken);
+
+        if (user == null) return; // No user account linked to this tenant
+
         // 1. Persist In-App Notification for the Tenant
         var inAppNotification = new Notification
         {
-            UserId = notification.UserId,
+            UserId = user.Id,
             Title = "Yeni Borç Tahakkuku",
             Message = $"{notification.Type} için {notification.Amount:C2} tutarında yeni borç eklendi.",
             Type = "Debt",
@@ -35,7 +42,7 @@ public class DebtCreatedEventHandler : INotificationHandler<DebtCreatedEvent>
 
         // 2. Send Web Push
         var subscriptions = await _context.UserPushSubscriptions
-            .Where(s => s.UserId == notification.UserId)
+            .Where(s => s.UserId == user.Id)
             .ToListAsync(cancellationToken);
 
         foreach (var sub in subscriptions)

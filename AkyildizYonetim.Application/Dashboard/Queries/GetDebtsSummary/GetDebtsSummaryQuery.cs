@@ -24,26 +24,32 @@ public class GetDebtsSummaryQueryHandler
     {
         try
         {
-            // Fetch debts with flat code via simple projection (avoids untranslatable GroupBy + nav property)
-            var debtsQuery = _context.UtilityDebts
+            // Join Flat separately to avoid nav-property + global soft-delete filter translation issue
+            var debtsRaw = _context.UtilityDebts
                 .AsNoTracking()
-                .Where(d => !d.IsDeleted && d.RemainingAmount > 0)
-                .Select(d => new
-                {
-                    d.TenantId,
-                    d.OwnerId,
-                    d.Type,
-                    d.RemainingAmount,
-                    d.DueDate,
-                    FlatCode = d.Flat != null ? d.Flat.Code : null
-                });
+                .IgnoreQueryFilters()
+                .Where(d => !d.IsDeleted && d.RemainingAmount > 0);
 
             if (request.Year.HasValue)
             {
-                debtsQuery = debtsQuery.Where(d => d.DueDate.Year == request.Year.Value);
+                debtsRaw = debtsRaw.Where(d => d.DueDate.Year == request.Year.Value);
             }
 
-            var debts = await debtsQuery.ToListAsync(cancellationToken);
+            var debts = await debtsRaw
+                .Join(
+                    _context.Flats.AsNoTracking().IgnoreQueryFilters(),
+                    d => d.FlatId,
+                    f => f.Id,
+                    (d, f) => new
+                    {
+                        d.TenantId,
+                        d.OwnerId,
+                        d.Type,
+                        d.RemainingAmount,
+                        d.DueDate,
+                        FlatCode = f.Code ?? f.Number
+                    })
+                .ToListAsync(cancellationToken);
 
             // Group in memory — avoids EF Core SQL translation limitations
             var groups = debts
