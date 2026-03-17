@@ -84,7 +84,7 @@ public class ImportUtilityDebtsFromExcelCommandHandler : IRequestHandler<ImportU
                 }
 
                 // Tarih Parçalama
-                if (!DateTime.TryParse(tarihRaw, out DateTime tarih)) tarih = DateTime.UtcNow;
+                DateTime tarih = ParseTurkishDate(tarihRaw);
 
                 // Dönem Parçalama (Örn: 2025/03 veya 2025-03)
                 int periodYear = tarih.Year;
@@ -117,9 +117,9 @@ public class ImportUtilityDebtsFromExcelCommandHandler : IRequestHandler<ImportU
                 DateTime dueDate = tarih;
                 string? sonOdemeRaw = GetValue(rowDict, "Son Ödeme Tarihi");
 
-                if (!string.IsNullOrEmpty(sonOdemeRaw) && DateTime.TryParse(sonOdemeRaw, out DateTime parsedDueDate))
+                if (!string.IsNullOrEmpty(sonOdemeRaw))
                 {
-                    dueDate = parsedDueDate;
+                    dueDate = ParseTurkishDate(sonOdemeRaw);
                 }
 
                 newDebts.Add(new UtilityDebt
@@ -169,5 +169,45 @@ public class ImportUtilityDebtsFromExcelCommandHandler : IRequestHandler<ImportU
     {
         var match = row.Keys.FirstOrDefault(k => k.Trim().Equals(key, StringComparison.OrdinalIgnoreCase));
         return match != null ? row[match]?.ToString()?.Trim() : null;
+    }
+
+    private DateTime ParseTurkishDate(string? raw)
+    {
+        if (string.IsNullOrEmpty(raw)) return DateTime.UtcNow;
+
+        if (DateTime.TryParse(raw, out DateTime parsed)) return parsed;
+
+        var parts = raw.Split(new[] { '.' }, StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 2)
+        {
+            string monthAbbrev = parts[0].ToLower().Trim();
+            string yearRaw = parts[1].Trim();
+
+            int month = monthAbbrev switch
+            {
+                "oca" => 1,
+                "şub" => 2,
+                "mar" => 3,
+                "nis" => 4,
+                "may" => 5,
+                "haz" => 6,
+                "tem" => 7,
+                "ağu" => 8,
+                "eyl" => 9,
+                "ekı" => 10,
+                "eki" => 10,
+                "kas" => 11,
+                "ara" => 12,
+                _ => 0
+            };
+
+            if (month > 0 && int.TryParse(yearRaw, out int yearShort))
+            {
+                int year = yearShort < 100 ? 2000 + yearShort : yearShort;
+                return new DateTime(year, month, 1);
+            }
+        }
+
+        return DateTime.UtcNow;
     }
 }
