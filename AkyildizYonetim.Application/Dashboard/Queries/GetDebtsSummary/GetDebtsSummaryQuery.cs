@@ -75,19 +75,21 @@ public class GetDebtsSummaryQueryHandler
             var ownerIds = groups.Where(x => !x.IsTenant).Select(x => x.EntityId).ToList();
 
             var tenants = tenantIds.Count > 0
-                ? await _context.Tenants
+                ? (await _context.Tenants
                     .AsNoTracking()
                     .Where(t => tenantIds.Contains(t.Id))
                     .Select(t => new { t.Id, Name = !string.IsNullOrEmpty(t.CompanyName) ? t.CompanyName : t.ContactPersonName })
-                    .ToDictionaryAsync(t => t.Id, t => t.Name, cancellationToken)
+                    .ToListAsync(cancellationToken))
+                    .ToDictionary(t => t.Id, t => t.Name)
                 : new Dictionary<Guid, string?>();
 
             var owners = ownerIds.Count > 0
-                ? await _context.Owners
+                ? (await _context.Owners
                     .AsNoTracking()
                     .Where(o => ownerIds.Contains(o.Id))
                     .Select(o => new { o.Id, Name = o.FirstName + " " + o.LastName })
-                    .ToDictionaryAsync(o => o.Id, o => o.Name, cancellationToken)
+                    .ToListAsync(cancellationToken))
+                    .ToDictionary(o => o.Id, o => o.Name)
                 : new Dictionary<Guid, string>();
 
             var finalResult = groups.Select(x => new DebtsSummaryDto
