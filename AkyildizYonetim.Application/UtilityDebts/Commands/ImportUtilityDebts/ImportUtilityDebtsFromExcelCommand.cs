@@ -86,6 +86,21 @@ public class ImportUtilityDebtsFromExcelCommandHandler : IRequestHandler<ImportU
                 // Tarih Parçalama
                 if (!DateTime.TryParse(tarihRaw, out DateTime tarih)) tarih = DateTime.UtcNow;
 
+                // Dönem Parçalama (Örn: 2025/03 veya 2025-03)
+                int periodYear = tarih.Year;
+                int periodMonth = tarih.Month;
+                string? donemRaw = GetValue(rowDict, "Dönem");
+
+                if (!string.IsNullOrEmpty(donemRaw))
+                {
+                    var parts = donemRaw.Split(new[] { '-', '/' }, StringSplitOptions.RemoveEmptyEntries);
+                    if (parts.Length == 2 && int.TryParse(parts[0], out int py) && int.TryParse(parts[1], out int pm))
+                    {
+                        periodYear = py;
+                        periodMonth = pm;
+                    }
+                }
+
                 // Borç Tipi Eşleştirme
                 DebtType type = DebtType.Aidat;
                 string finalDescription = aciklama ?? "";
@@ -98,18 +113,27 @@ public class ImportUtilityDebtsFromExcelCommandHandler : IRequestHandler<ImportU
                     finalDescription = $"[{turRaw}] {finalDescription}".Trim();
                 }
 
+                // Son Ödeme Tarihi Parçalama
+                DateTime dueDate = tarih;
+                string? sonOdemeRaw = GetValue(rowDict, "Son Ödeme Tarihi");
+
+                if (!string.IsNullOrEmpty(sonOdemeRaw) && DateTime.TryParse(sonOdemeRaw, out DateTime parsedDueDate))
+                {
+                    dueDate = parsedDueDate;
+                }
+
                 newDebts.Add(new UtilityDebt
                 {
                     Id = Guid.NewGuid(),
                     FlatId = flat.Id,
                     TenantId = tenant.Id,
                     Type = type,
-                    PeriodYear = tarih.Year,
-                    PeriodMonth = tarih.Month,
+                    PeriodYear = periodYear,
+                    PeriodMonth = periodMonth,
                     Amount = tutar,
                     RemainingAmount = tutar,
                     Status = DebtStatus.Unpaid,
-                    DueDate = tarih,
+                    DueDate = dueDate,
                     Description = finalDescription,
                     CreatedAt = DateTime.UtcNow,
                     IsDeleted = false
