@@ -173,17 +173,17 @@ public class PaymentsController : ControllerBase
     /// <summary>
     /// Çoklu ödeme siler
     /// </summary>
-    /// <param name="ids">Silinecek Ödeme ID Listesi</param>
+    /// <param name="request">Silinecek Ödeme ID Listesi</param>
     /// <returns>Silme işlemi sonucu</returns>
     [Authorize(Policy = "TenantWrite")]
     [HttpDelete("bulk")]
     [ProducesResponseType(204)]
     [ProducesResponseType(typeof(object), 400)]
-    public async Task<IActionResult> DeleteBulkPayments([FromBody] List<Guid> ids)
+    public async Task<IActionResult> DeleteBulkPayments([FromBody] DeleteBulkPaymentsRequest request)
     {
-        if (ids == null || !ids.Any()) return BadRequest("Lütfen silinecek ödemeleri seçin.");
+        if (request?.Ids == null || !request.Ids.Any()) return BadRequest("Lütfen silinecek ödemeleri seçin.");
 
-        var command = new DeleteBulkPaymentsCommand { Ids = ids };
+        var command = new DeleteBulkPaymentsCommand { Ids = request.Ids };
         var result = await _mediator.Send(command);
         return result.IsSuccess ? NoContent() : BadRequest(result.ErrorMessage ?? string.Join(", ", result.Errors));
     }
@@ -203,6 +203,11 @@ public class PaymentsController : ControllerBase
             timestamp = DateTime.UtcNow
         });
     }
+}
+
+public class DeleteBulkPaymentsRequest
+{
+    public List<Guid> Ids { get; set; } = new();
 }
 
 public class CreatePaymentRequest

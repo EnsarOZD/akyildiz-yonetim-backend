@@ -119,11 +119,11 @@ public class UtilityDebtsController : ControllerBase
 
     [Authorize(Policy = "TenantWrite")]
     [HttpDelete("bulk")]
-    public async Task<IActionResult> DeleteBulkUtilityDebts([FromBody] List<Guid> ids)
+    public async Task<IActionResult> DeleteBulkUtilityDebts([FromBody] DeleteBulkUtilityDebtsRequest request)
     {
-        if (ids == null || !ids.Any()) return BadRequest("Lütfen silinecek kayıtları seçin.");
+        if (request?.Ids == null || !request.Ids.Any()) return BadRequest("Lütfen silinecek kayıtları seçin.");
         
-        var command = new DeleteBulkUtilityDebtsCommand { Ids = ids };
+        var command = new DeleteBulkUtilityDebtsCommand { Ids = request.Ids };
         var result = await _mediator.Send(command);
         return result.IsSuccess ? NoContent() : BadRequest(result.ErrorMessage ?? string.Join(", ", result.Errors));
     }
@@ -176,6 +176,11 @@ public class DistributeSharedExpenseRequest
 {
     public string Period { get; set; } = string.Empty;
     public string UtilityType { get; set; } = string.Empty;
+}
+
+public class DeleteBulkUtilityDebtsRequest
+{
+    public List<Guid> Ids { get; set; } = new();
 }
 
 public sealed class CreateAidatRequest
