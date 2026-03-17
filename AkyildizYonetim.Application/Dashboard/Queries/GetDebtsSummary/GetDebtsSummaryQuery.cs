@@ -32,7 +32,9 @@ public class GetDebtsSummaryQueryHandler
 
             if (request.Year.HasValue)
             {
-                debtsRaw = debtsRaw.Where(d => d.DueDate.Year == request.Year.Value);
+                var startDate = new DateTime(request.Year.Value, 1, 1);
+                var endDate = new DateTime(request.Year.Value, 12, 31, 23, 59, 59);
+                debtsRaw = debtsRaw.Where(d => d.DueDate >= startDate && d.DueDate <= endDate);
             }
 
             var debts = await debtsRaw
@@ -47,7 +49,8 @@ public class GetDebtsSummaryQueryHandler
                         d.Type,
                         d.RemainingAmount,
                         d.DueDate,
-                        FlatCode = f.Code ?? f.Number
+                        FlatCode = f.Code,
+                        FlatNumber = f.Number
                     })
                 .ToListAsync(cancellationToken);
 
@@ -60,7 +63,7 @@ public class GetDebtsSummaryQueryHandler
                 {
                     EntityId = g.Key!.Value,
                     IsTenant = g.Any(d => d.TenantId.HasValue),
-                    FlatCodes = g.Select(d => d.FlatCode ?? "Bilinmiyor").Distinct().OrderBy(c => c).ToList(),
+                    FlatCodes = g.Select(d => !string.IsNullOrEmpty(d.FlatCode) ? d.FlatCode : d.FlatNumber).Distinct().OrderBy(c => c).ToList(),
                     AidatDebt = g.Where(d => d.Type == DebtType.Aidat).Sum(d => d.RemainingAmount),
                     ElectricityDebt = g.Where(d => d.Type == DebtType.Electricity).Sum(d => d.RemainingAmount),
                     WaterDebt = g.Where(d => d.Type == DebtType.Water).Sum(d => d.RemainingAmount)
