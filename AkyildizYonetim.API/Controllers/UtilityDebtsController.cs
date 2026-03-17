@@ -118,7 +118,7 @@ public class UtilityDebtsController : ControllerBase
     }
 
     [Authorize(Policy = "TenantWrite")]
-    [HttpDelete("bulk")]
+    [HttpPost("bulk-delete")]
     public async Task<IActionResult> DeleteBulkUtilityDebts([FromBody] DeleteBulkUtilityDebtsRequest request)
     {
         if (request?.Ids == null || !request.Ids.Any()) return BadRequest("Lütfen silinecek kayıtları seçin.");

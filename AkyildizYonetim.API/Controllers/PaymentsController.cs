@@ -176,7 +176,7 @@ public class PaymentsController : ControllerBase
     /// <param name="request">Silinecek Ödeme ID Listesi</param>
     /// <returns>Silme işlemi sonucu</returns>
     [Authorize(Policy = "TenantWrite")]
-    [HttpDelete("bulk")]
+    [HttpPost("bulk-delete")]
     [ProducesResponseType(204)]
     [ProducesResponseType(typeof(object), 400)]
     public async Task<IActionResult> DeleteBulkPayments([FromBody] DeleteBulkPaymentsRequest request)
