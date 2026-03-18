@@ -93,9 +93,8 @@ public class SendTargetedNotificationCommandHandler : IRequestHandler<SendTarget
                 if (overdueDebts.Count > 0)
                 {
                     var total = overdueDebts.Sum(d => d.RemainingAmount);
-                    finalMessage += $"\n\nToplam gecikmiş borç: {total:C} ({overdueDebts.Count} kalem)";
+                    finalMessage += $"\n\nToplam gecikmiş borç: {total:N2} ₺ ({overdueDebts.Count} kalem)";
 
-                    // Optionally send email
                     if (request.SendEmail)
                     {
                         var tenant = await _context.Tenants.FirstOrDefaultAsync(t => t.Id == debtTenantId, cancellationToken);
@@ -109,6 +108,22 @@ public class SendTargetedNotificationCommandHandler : IRequestHandler<SendTarget
                                 cancellationToken);
                         }
                     }
+                }
+            }
+
+            // For announcement/private type: send email to target users
+            if (request.SendEmail && request.Type != "debt")
+            {
+                foreach (var user in targetUsers)
+                {
+                    if (string.IsNullOrEmpty(user.Email)) continue;
+                    var displayName = $"{user.FirstName} {user.LastName}".Trim();
+                    await _notificationService.SendAnnouncementEmailAsync(
+                        finalTitle,
+                        finalMessage,
+                        user.Email,
+                        displayName,
+                        cancellationToken);
                 }
             }
 

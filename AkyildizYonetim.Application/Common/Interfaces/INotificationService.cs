@@ -33,6 +33,13 @@ public interface INotificationService
         string recipientEmail,
         string recipientName,
         CancellationToken cancellationToken = default);
+
+    Task SendAnnouncementEmailAsync(
+        string title,
+        string message,
+        string recipientEmail,
+        string recipientName,
+        CancellationToken cancellationToken = default);
 }
 
 public record DebtAllocationInfo
