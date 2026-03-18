@@ -24,6 +24,7 @@ public record CreatePaymentWithDebtAllocationCommand : IRequest<Result<PaymentWi
     public List<DebtAllocationRequest>? DebtAllocations { get; init; } // Manuel eşleştirme
     public bool AutoAllocate { get; init; } = true; // Otomatik eşleştirme
     public bool UseAdvanceAccount { get; init; } = false; // Avans hesabı kullan
+    public DebtType? TargetDebtType { get; init; } // Filtrelenecek borç kategorisi
 }
 
 public record DebtAllocationRequest
@@ -129,6 +130,10 @@ public class CreatePaymentWithDebtAllocationCommandHandler
                         debt.RemainingAmount = debt.Amount - debt.PaidAmount.Value;
                         debt.UpdatedAt = DateTime.UtcNow;
 
+                        // Durum güncellemesi
+                        if (debt.RemainingAmount <= 0) debt.Status = DebtStatus.Paid;
+                        else if (debt.PaidAmount > 0) debt.Status = DebtStatus.Partial;
+
                         allocationResults.Add(new DebtAllocationResult
                         {
                             DebtId = debt.Id,
@@ -146,10 +151,17 @@ public class CreatePaymentWithDebtAllocationCommandHandler
             if (request.AutoAllocate && remainingAmount > 0)
             {
                 var tenantId = request.TenantId;
+                var ownerId = request.OwnerId;
+
                 if (tenantId.HasValue)
                 {
-                    var unpaidDebts = await _context.UtilityDebts
-                        .Where(d => d.TenantId == tenantId && d.RemainingAmount > 0 && !d.IsDeleted)
+                    var query = _context.UtilityDebts
+                        .Where(d => d.TenantId == tenantId && d.RemainingAmount > 0 && !d.IsDeleted);
+
+                    if (request.TargetDebtType.HasValue)
+                        query = query.Where(d => d.Type == request.TargetDebtType.Value);
+
+                    var unpaidDebts = await query
                         .OrderBy(d => d.DueDate) // En eski borçtan başla
                         .ToListAsync(cancellationToken);
 
@@ -174,6 +186,57 @@ public class CreatePaymentWithDebtAllocationCommandHandler
                         debt.PaidAmount = (debt.PaidAmount ?? 0) + allocationAmount;
                         debt.RemainingAmount = debt.Amount - debt.PaidAmount.Value;
                         debt.UpdatedAt = DateTime.UtcNow;
+
+                        // Durum güncellemesi
+                        if (debt.RemainingAmount <= 0) debt.Status = DebtStatus.Paid;
+                        else if (debt.PaidAmount > 0) debt.Status = DebtStatus.Partial;
+
+                        allocationResults.Add(new DebtAllocationResult
+                        {
+                            DebtId = debt.Id,
+                            DebtDescription = debt.Description ?? $"{debt.Type} - {debt.PeriodYear}/{debt.PeriodMonth}",
+                            AllocatedAmount = allocationAmount,
+                            RemainingDebtAmount = debt.RemainingAmount
+                        });
+
+                        remainingAmount -= allocationAmount;
+                    }
+                }
+                else if (ownerId.HasValue)
+                {
+                    var query = _context.UtilityDebts
+                        .Where(d => d.OwnerId == ownerId && d.RemainingAmount > 0 && !d.IsDeleted);
+
+                    if (request.TargetDebtType.HasValue)
+                        query = query.Where(d => d.Type == request.TargetDebtType.Value);
+
+                    var unpaidDebts = await query
+                        .OrderBy(d => d.DueDate)
+                        .ToListAsync(cancellationToken);
+
+                    foreach (var debt in unpaidDebts)
+                    {
+                        if (remainingAmount <= 0) break;
+
+                        var allocationAmount = Math.Min(remainingAmount, debt.RemainingAmount);
+
+                        var paymentDebt = new PaymentDebt
+                        {
+                            Id = Guid.NewGuid(),
+                            PaymentId = payment.Id,
+                            DebtId = debt.Id,
+                            PaidAmount = allocationAmount,
+                            CreatedAt = DateTime.UtcNow
+                        };
+
+                        _context.PaymentDebts.Add(paymentDebt);
+                        
+                        debt.PaidAmount = (debt.PaidAmount ?? 0) + allocationAmount;
+                        debt.RemainingAmount = debt.Amount - debt.PaidAmount.Value;
+                        debt.UpdatedAt = DateTime.UtcNow;
+
+                        if (debt.RemainingAmount <= 0) debt.Status = DebtStatus.Paid;
+                        else if (debt.PaidAmount > 0) debt.Status = DebtStatus.Partial;
 
                         allocationResults.Add(new DebtAllocationResult
                         {
