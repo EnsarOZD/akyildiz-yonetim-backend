@@ -7,12 +7,19 @@ using MiniExcelLibs;
 
 namespace AkyildizYonetim.Application.UtilityDebts.Commands.ImportUtilityDebts;
 
-public record ImportUtilityDebtsFromExcelCommand : IRequest<Result<int>>
+public class ImportResultDto
+{
+    public int SuccessCount { get; set; }
+    public int FailedCount { get; set; }
+    public List<string> Errors { get; set; } = new();
+}
+
+public record ImportUtilityDebtsFromExcelCommand : IRequest<Result<ImportResultDto>>
 {
     public Stream ExcelStream { get; init; } = null!;
 }
 
-public class ImportUtilityDebtsFromExcelCommandHandler : IRequestHandler<ImportUtilityDebtsFromExcelCommand, Result<int>>
+public class ImportUtilityDebtsFromExcelCommandHandler : IRequestHandler<ImportUtilityDebtsFromExcelCommand, Result<ImportResultDto>>
 {
     private readonly IApplicationDbContext _context;
 
@@ -141,10 +148,12 @@ public class ImportUtilityDebtsFromExcelCommandHandler : IRequestHandler<ImportU
                 importedCount++;
             }
 
-            if (errors.Any() && !newDebts.Any())
+            var resultDto = new ImportResultDto
             {
-                return Result<int>.Failure(string.Join(" | ", errors.Take(5)) + (errors.Count > 5 ? $" ve {errors.Count - 5} hata daha..." : ""));
-            }
+                SuccessCount = importedCount,
+                FailedCount = errors.Count,
+                Errors = errors
+            };
 
             if (newDebts.Any())
             {
@@ -152,16 +161,16 @@ public class ImportUtilityDebtsFromExcelCommandHandler : IRequestHandler<ImportU
                 await _context.SaveChangesAsync(cancellationToken);
             }
 
-            if (errors.Any())
+            if (errors.Any() && !newDebts.Any())
             {
-                return Result<int>.Success(importedCount, $"{importedCount} borç başarıyla eklendi, ancak {errors.Count} satırda hata oluştu: " + string.Join(" | ", errors.Take(3)));
+                return new Result<ImportResultDto> { IsSuccess = false, Data = resultDto, ErrorMessage = "Tüm satırlarda hata oluştu." };
             }
 
-            return Result<int>.Success(importedCount);
+            return new Result<ImportResultDto> { IsSuccess = true, Data = resultDto };
         }
         catch (Exception ex)
         {
-            return Result<int>.Failure($"İçe aktarma sırasında beklenmedik hata: {ex.Message}");
+            return Result<ImportResultDto>.Failure($"İçe aktarma sırasında beklenmedik hata: {ex.Message}");
         }
     }
 
