@@ -37,7 +37,7 @@ public class UtilityDebtsController : ControllerBase
         using var stream = file.OpenReadStream();
         var result = await _mediator.Send(new ImportUtilityDebtsFromExcelCommand { ExcelStream = stream });
         
-        return result.IsSuccess ? Ok(new { count = result.Data }) : BadRequest(result.ErrorMessage);
+        return result.IsSuccess ? Ok(result) : BadRequest(result.ErrorMessage);
     }
 
     [HttpGet]
