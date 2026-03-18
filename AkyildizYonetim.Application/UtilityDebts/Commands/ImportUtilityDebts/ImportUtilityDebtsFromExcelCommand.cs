@@ -28,13 +28,13 @@ public class ImportUtilityDebtsFromExcelCommandHandler : IRequestHandler<ImportU
         _context = context;
     }
 
-    public async Task<Result<int>> Handle(ImportUtilityDebtsFromExcelCommand request, CancellationToken cancellationToken)
+    public async Task<Result<ImportResultDto>> Handle(ImportUtilityDebtsFromExcelCommand request, CancellationToken cancellationToken)
     {
         try
         {
             var rows = request.ExcelStream.Query(useHeaderRow: true).ToList();
             if (!rows.Any())
-                return Result<int>.Failure("Excel dosyası boş veya başlık satırı bulunamadı.");
+                return Result<ImportResultDto>.Failure("Excel dosyası boş veya başlık satırı bulunamadı.");
 
             var tenants = await _context.Tenants.Where(t => !t.IsDeleted).ToListAsync(cancellationToken);
             var flats = await _context.Flats.Where(f => !f.IsDeleted).ToListAsync(cancellationToken);
