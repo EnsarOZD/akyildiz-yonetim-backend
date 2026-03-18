@@ -23,4 +23,5 @@ public class PaymentDto
     public int? PeriodMonth { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
+    public List<DebtType> DebtTypes { get; set; } = new();
 }

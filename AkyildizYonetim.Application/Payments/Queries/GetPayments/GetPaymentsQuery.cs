@@ -108,7 +108,8 @@ public class GetPaymentsQueryHandler : IRequestHandler<GetPaymentsQuery, Result<
                     ? string.Join(", ", p.Tenant.Flats.Select(f => $"Daire {f.Number}"))
                     : (p.Owner != null && p.Owner.Flats.Any() ? string.Join(", ", p.Owner.Flats.Select(f => $"Daire {f.Number}")) : null),
                 PeriodYear = p.PaymentDebts.Select(pd => pd.Debt.PeriodYear).FirstOrDefault(),
-                PeriodMonth = p.PaymentDebts.Select(pd => pd.Debt.PeriodMonth).FirstOrDefault()
+                PeriodMonth = p.PaymentDebts.Select(pd => pd.Debt.PeriodMonth).FirstOrDefault(),
+                DebtTypes = p.PaymentDebts.Select(pd => pd.Debt.Type).Distinct().ToList()
             })
             .ToPagedResultAsync(request.PageNumber, request.PageSize, cancellationToken);
 
