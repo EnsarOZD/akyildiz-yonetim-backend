@@ -41,10 +41,10 @@ public class GetPaymentsQueryHandler : IRequestHandler<GetPaymentsQuery, Result<
             .AsQueryable();
 
         // Data Scope Resolution
-        var effectiveTenantId = DataScopeHelper.ResolveTenantId(_currentUserService, request.TenantId, u => u.IsAdmin, u => u.IsManager);
-        var effectiveOwnerId = DataScopeHelper.ResolveOwnerId(_currentUserService, request.OwnerId, u => u.IsAdmin, u => u.IsManager);
+        var effectiveTenantId = DataScopeHelper.ResolveTenantId(_currentUserService, request.TenantId, u => u.IsAdmin, u => u.IsManager, u => u.IsDataEntry, u => u.IsObserver);
+        var effectiveOwnerId = DataScopeHelper.ResolveOwnerId(_currentUserService, request.OwnerId, u => u.IsAdmin, u => u.IsManager, u => u.IsDataEntry, u => u.IsObserver);
 
-        if (DataScopeHelper.IsScopeRestricted(_currentUserService, u => u.IsAdmin, u => u.IsManager))
+        if (DataScopeHelper.IsScopeRestricted(_currentUserService, u => u.IsAdmin, u => u.IsManager, u => u.IsDataEntry, u => u.IsObserver))
         {
             if (!effectiveTenantId.HasValue && !effectiveOwnerId.HasValue)
             {

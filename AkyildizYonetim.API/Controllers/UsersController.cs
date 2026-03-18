@@ -140,10 +140,10 @@ public class UsersController : ControllerBase
         // Şifre sıfırlama linki
         var resetLink = urlBuilder.BuildResetPasswordLink(resetToken, user.Email);
 
-        // E-posta gönder
+        // E-posta gÃ¶nder
         await _emailSender.SendPasswordResetEmailAsync(user.Email, resetLink);
 
-        return Ok(new { message = "Şifre sıfırlama bağlantısı e-posta ile gönderildi." });
+        return Ok(new { message = "Åifre sÄ±fÄ±rlama baÄŸlantÄ±sÄ± e-posta ile gÃ¶nderildi." });
     }
 
     [Authorize(Roles = "admin")]

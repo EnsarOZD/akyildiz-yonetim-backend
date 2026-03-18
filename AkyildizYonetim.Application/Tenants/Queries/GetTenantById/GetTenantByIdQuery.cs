@@ -62,7 +62,10 @@ public class GetTenantByIdQueryHandler : IRequestHandler<GetTenantByIdQuery, Res
 					.Sum(a => a.Balance),
 
 				Flats = _context.Flats
-					.Where(f => f.TenantId == t.Id && !f.IsDeleted)
+					.Where(f => !f.IsDeleted && (
+						f.TenantId == t.Id ||
+						_context.UtilityDebts.Any(d => d.TenantId == t.Id && d.FlatId == f.Id && !d.IsDeleted)
+					))
 					.OrderByDescending(f => f.FloorNumber ?? int.MinValue)
 					.Select(f => new TenantFlatInfoDto
 					{
