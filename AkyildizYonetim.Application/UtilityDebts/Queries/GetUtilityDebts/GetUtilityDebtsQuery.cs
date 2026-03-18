@@ -14,6 +14,7 @@ public record GetUtilityDebtsQuery : IRequest<Result<PagedResult<UtilityDebtDto>
     public int? PeriodYear { get; init; }
     public int? PeriodMonth { get; init; }
     public DebtStatus? Status { get; init; }
+    public bool? ExcludePaid { get; init; }
     public Guid? TenantId { get; init; }
     public Guid? OwnerId { get; init; }
     public DateTime? StartDate { get; init; }
@@ -79,8 +80,14 @@ public class GetUtilityDebtsQueryHandler : IRequestHandler<GetUtilityDebtsQuery,
             query = query.Where(d => d.PeriodYear == request.PeriodYear.Value);
         if (request.PeriodMonth.HasValue)
             query = query.Where(d => d.PeriodMonth == request.PeriodMonth.Value);
-        if (request.Status.HasValue)
+        if (request.ExcludePaid == true)
+        {
+            query = query.Where(d => d.Status != DebtStatus.Paid);
+        }
+        else if (request.Status.HasValue)
+        {
             query = query.Where(d => d.Status == request.Status.Value);
+        }
         var debts = await query.OrderByDescending(d => d.PeriodYear)
             .ThenByDescending(d => d.PeriodMonth)
             .ThenByDescending(d => d.CreatedAt)
