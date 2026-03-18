@@ -109,6 +109,20 @@ public class UsersController : ControllerBase
     }
 
     [Authorize(Roles = "admin")]
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> DeleteUser(Guid id)
+    {
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == id && !u.IsDeleted);
+        if (user == null) return NotFound("Kullanıcı bulunamadı.");
+
+        user.IsDeleted = true;
+        user.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync(default);
+        return NoContent();
+    }
+
+    [Authorize(Roles = "admin")]
     [HttpPost("{id}/reset-password")]
     public async Task<IActionResult> ResetPassword(Guid id, [FromServices] IAppUrlBuilder urlBuilder)
     {
