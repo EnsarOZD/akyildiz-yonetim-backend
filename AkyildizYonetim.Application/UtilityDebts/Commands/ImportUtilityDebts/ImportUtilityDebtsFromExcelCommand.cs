@@ -37,6 +37,7 @@ public class ImportUtilityDebtsFromExcelCommandHandler : IRequestHandler<ImportU
                 return Result<ImportResultDto>.Failure("Excel dosyası boş veya başlık satırı bulunamadı.");
 
             var tenants = await _context.Tenants.Where(t => !t.IsDeleted).ToListAsync(cancellationToken);
+            var owners = await _context.Owners.Where(o => !o.IsDeleted).ToListAsync(cancellationToken);
             var flats = await _context.Flats.Where(f => !f.IsDeleted).ToListAsync(cancellationToken);
             
             int importedCount = 0;
@@ -69,24 +70,31 @@ public class ImportUtilityDebtsFromExcelCommandHandler : IRequestHandler<ImportU
                     continue;
                 }
 
-                // Kiracı Bulma
+                // Kiracı veya Mal Sahibi Bulma
                 var tenant = tenants.FirstOrDefault(t => 
                     string.Equals(t.CompanyName, firmaIsmi, StringComparison.OrdinalIgnoreCase) ||
                     string.Equals(t.ContactPersonName, firmaIsmi, StringComparison.OrdinalIgnoreCase));
 
+                Owner? owner = null;
                 if (tenant == null)
                 {
-                    errors.Add($"Satır {rowIndex}: '{firmaIsmi}' isimli kiracı bulunamadı.");
+                    owner = owners.FirstOrDefault(o => 
+                        string.Equals($"{o.FirstName} {o.LastName}".Trim(), firmaIsmi, StringComparison.OrdinalIgnoreCase));
+                }
+
+                if (tenant == null && owner == null)
+                {
+                    errors.Add($"Satır {rowIndex}: '{firmaIsmi}' isimli kiracı veya mal sahibi bulunamadı.");
                     continue;
                 }
 
                 // Daire Bulma
-                var flat = flats.FirstOrDefault(f => f.TenantId == tenant.Id) 
-                           ?? flats.FirstOrDefault(f => f.OwnerId == tenant.Id);
+                var flat = flats.FirstOrDefault(f => tenant != null && f.TenantId == tenant.Id) 
+                           ?? flats.FirstOrDefault(f => owner != null && f.OwnerId == owner.Id);
                 
                 if (flat == null)
                 {
-                    errors.Add($"Satır {rowIndex}: Kiracıya or mülk sahibine bağlı aktif bir daire bulunamadı.");
+                    errors.Add($"Satır {rowIndex}: Bağlı aktif bir daire bulunamadı.");
                     continue;
                 }
 
@@ -133,7 +141,8 @@ public class ImportUtilityDebtsFromExcelCommandHandler : IRequestHandler<ImportU
                 {
                     Id = Guid.NewGuid(),
                     FlatId = flat.Id,
-                    TenantId = tenant.Id,
+                    TenantId = tenant?.Id,
+                    OwnerId = owner?.Id,
                     Type = type,
                     PeriodYear = periodYear,
                     PeriodMonth = periodMonth,
