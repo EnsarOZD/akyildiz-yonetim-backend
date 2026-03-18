@@ -155,11 +155,17 @@ public class CreatePaymentWithDebtAllocationCommandHandler
 
                 if (tenantId.HasValue)
                 {
+                    _logger.LogInformation("Creating Automatic Allocation for Tenant: {TenantId}, TargetDebtType: {TargetType}", 
+                        tenantId, request.TargetDebtType?.ToString() ?? "NULL");
+
                     var query = _context.UtilityDebts
                         .Where(d => d.TenantId == tenantId && d.RemainingAmount > 0 && !d.IsDeleted);
 
                     if (request.TargetDebtType.HasValue)
+                    {
+                        _logger.LogInformation("Filtering by DebtType: {TargetType}", request.TargetDebtType.Value);
                         query = query.Where(d => d.Type == request.TargetDebtType.Value);
+                    }
 
                     var unpaidDebts = await query
                         .OrderBy(d => d.DueDate) // En eski borçtan başla
@@ -204,11 +210,17 @@ public class CreatePaymentWithDebtAllocationCommandHandler
                 }
                 else if (ownerId.HasValue)
                 {
+                    _logger.LogInformation("Creating Automatic Allocation for Owner: {OwnerId}, TargetDebtType: {TargetType}", 
+                        ownerId, request.TargetDebtType?.ToString() ?? "NULL");
+
                     var query = _context.UtilityDebts
                         .Where(d => d.OwnerId == ownerId && d.RemainingAmount > 0 && !d.IsDeleted);
 
                     if (request.TargetDebtType.HasValue)
+                    {
+                        _logger.LogInformation("Filtering by DebtType: {TargetType} for Owner", request.TargetDebtType.Value);
                         query = query.Where(d => d.Type == request.TargetDebtType.Value);
+                    }
 
                     var unpaidDebts = await query
                         .OrderBy(d => d.DueDate)
