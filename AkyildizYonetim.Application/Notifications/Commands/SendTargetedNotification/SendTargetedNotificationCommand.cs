@@ -72,7 +72,7 @@ public class SendTargetedNotificationCommandHandler : IRequestHandler<SendTarget
                     .ToListAsync(cancellationToken);
             }
 
-            if (targetUsers.Count == 0)
+            if (targetUsers.Count == 0 && !(request.Type == "debt" && request.TargetType == "tenant" && request.SendEmail))
                 return Result.Failure("Hedef kitlede kullanıcı bulunamadı.");
 
             string finalTitle = request.Title;
