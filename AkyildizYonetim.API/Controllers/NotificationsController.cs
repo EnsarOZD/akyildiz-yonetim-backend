@@ -113,6 +113,16 @@ public class NotificationsController : ControllerBase
         return result.IsSuccess ? Ok() : BadRequest(result.ErrorMessage);
     }
 
+    [Authorize(Roles = "admin")]
+    [HttpDelete("all")]
+    public async Task<IActionResult> DeleteAllNotifications(CancellationToken cancellationToken)
+    {
+        var all = await _context.Notifications.ToListAsync(cancellationToken);
+        _context.Notifications.RemoveRange(all);
+        await _context.SaveChangesAsync(cancellationToken);
+        return NoContent();
+    }
+
     [Authorize(Roles = "admin,manager")]
     [HttpPost("broadcast")]
     public async Task<IActionResult> PostAnnouncement([FromBody] AkyildizYonetim.Application.Notifications.Commands.PostAnnouncement.PostAnnouncementCommand command)
