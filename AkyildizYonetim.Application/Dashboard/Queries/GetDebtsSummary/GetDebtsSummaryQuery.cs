@@ -28,7 +28,7 @@ public class GetDebtsSummaryQueryHandler
             var debtsRaw = _context.UtilityDebts
                 .AsNoTracking()
                 .IgnoreQueryFilters()
-                .Where(d => !d.IsDeleted && d.RemainingAmount > 0);
+                .Where(d => !d.IsDeleted && d.RemainingAmount > 0 && d.Status != Domain.Entities.DebtStatus.Paid);
 
             if (request.Year.HasValue)
             {

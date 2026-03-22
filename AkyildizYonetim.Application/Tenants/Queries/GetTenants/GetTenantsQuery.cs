@@ -98,12 +98,12 @@ namespace AkyildizYonetim.Application.Tenants.Queries.GetTenants
                     CreatedAt = t.CreatedAt,
                     UpdatedAt = t.UpdatedAt,
 
-                    TotalBalance = t.UtilityDebts
+                    TotalBalance = (t.UtilityDebts
                         .Where(d => !d.IsDeleted && d.Status != Domain.Entities.DebtStatus.Paid)
-                        .Sum(d => (decimal?)d.RemainingAmount) ?? 0 -
-                                   t.AdvanceAccounts
+                        .Sum(d => (decimal?)d.RemainingAmount) ?? 0) -
+                        (t.AdvanceAccounts
                         .Where(a => !a.IsDeleted && a.IsActive)
-                        .Sum(a => (decimal?)a.Balance) ?? 0,
+                        .Sum(a => (decimal?)a.Balance) ?? 0),
 
                     AdvanceBalance = t.AdvanceAccounts
                         .Where(a => !a.IsDeleted && a.IsActive)
