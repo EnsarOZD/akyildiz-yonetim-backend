@@ -30,7 +30,7 @@ public class JwtService : IJwtService
             new Claim(ClaimTypes.Role, user.Role.ToString().ToLower())
         };
 
-        // Domain claims: TenantId/OwnerId
+        // Domain claims: TenantId/OwnerId/CompanyName
         if (user.OwnerId.HasValue)
         {
             claims.Add(new Claim("OwnerId", user.OwnerId.Value.ToString()));
@@ -38,6 +38,12 @@ public class JwtService : IJwtService
         if (user.TenantId.HasValue)
         {
             claims.Add(new Claim("TenantId", user.TenantId.Value.ToString()));
+        }
+        var companyName = user.Tenant?.CompanyName
+            ?? (user.Owner != null ? $"{user.Owner.FirstName} {user.Owner.LastName}".Trim() : null);
+        if (!string.IsNullOrEmpty(companyName))
+        {
+            claims.Add(new Claim("CompanyName", companyName));
         }
 
         var token = new JwtSecurityToken(

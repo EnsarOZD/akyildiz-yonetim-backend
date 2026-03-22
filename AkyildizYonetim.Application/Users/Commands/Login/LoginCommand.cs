@@ -33,7 +33,10 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, Result<LoginRes
     {
         _logger.LogInformation("Searching for user with email: {Email}", request.Email);
         
-        var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == request.Email && !u.IsDeleted, cancellationToken);
+        var user = await _context.Users
+            .Include(u => u.Tenant)
+            .Include(u => u.Owner)
+            .FirstOrDefaultAsync(u => u.Email == request.Email && !u.IsDeleted, cancellationToken);
         
         if (user == null)
         {
@@ -74,6 +77,10 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, Result<LoginRes
         // JWT token üret
         var token = _jwtService.GenerateToken(user);
         
+        var companyName = user.Tenant?.CompanyName
+            ?? (user.Owner != null ? $"{user.Owner.FirstName} {user.Owner.LastName}".Trim() : null);
+        var companyId = user.TenantId?.ToString() ?? user.OwnerId?.ToString();
+
         var result = new LoginResultDto
         {
             UserId = user.Id,
@@ -82,7 +89,9 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, Result<LoginRes
             Email = user.Email,
             Role = user.Role.ToString(),
             Token = token,
-            RequiresPasswordReset = false // user.RequiresPasswordReset
+            RequiresPasswordReset = false,
+            CompanyName = companyName,
+            CompanyId = companyId
         };
         return Result<LoginResultDto>.Success(result);
     }
@@ -97,4 +106,6 @@ public class LoginResultDto
     public string Role { get; set; } = string.Empty;
     public string Token { get; set; } = string.Empty;
     public bool RequiresPasswordReset { get; set; }
+    public string? CompanyName { get; set; }
+    public string? CompanyId { get; set; }
 } 

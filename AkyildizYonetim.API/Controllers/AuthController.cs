@@ -84,14 +84,16 @@ public class AuthController : ControllerBase
         var name = User.FindFirst(ClaimTypes.Name)?.Value;
         var role = User.FindFirst(ClaimTypes.Role)?.Value;
         var companyId = User.FindFirst("TenantId")?.Value ?? User.FindFirst("OwnerId")?.Value;
-        
+        var companyName = User.FindFirst("CompanyName")?.Value;
+
         return Ok(new
         {
             UserId = userId,
             Email = email,
             Name = name,
             Role = role,
-            CompanyId = companyId
+            CompanyId = companyId,
+            CompanyName = companyName
         });
     }
 
