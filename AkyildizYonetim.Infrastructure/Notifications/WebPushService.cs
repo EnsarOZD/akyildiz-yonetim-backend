@@ -3,6 +3,7 @@ using Lib.Net.Http.WebPush;
 using Lib.Net.Http.WebPush.Authentication;
 using Microsoft.Extensions.Configuration;
 using System.Text.Json;
+using System.Text.Encodings.Web;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Net.Http;
@@ -46,6 +47,11 @@ public class WebPushService : IWebPushService
             }
         };
 
+        var jsonOptions = new JsonSerializerOptions
+        {
+            Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+        };
+
         var payload = JsonSerializer.Serialize(new
         {
             notification = new
@@ -55,7 +61,7 @@ public class WebPushService : IWebPushService
                 icon = "/logo-default.svg",
                 data = new { url = url }
             }
-        });
+        }, jsonOptions);
 
         var pushMessage = new PushMessage(payload)
         {
