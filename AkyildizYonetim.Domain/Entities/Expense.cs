@@ -8,7 +8,10 @@ public enum ExpenseType
     Maintenance,
     Cleaning,
     Security,
-    Other
+    Other,
+    FoodAndBeverage,
+    Salary,
+    Tax
 }
 
 public class Expense : BaseEntity

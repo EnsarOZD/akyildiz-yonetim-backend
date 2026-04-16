@@ -236,8 +236,7 @@ if (!isTest)
                 logger.LogInformation("RunMigrationsOnStartup kapalı. Migration atlanıyor.");
             }
     		
-    		await DataSeeder.SeedAsync(context, logger);
-	}
+    	}
 	catch (Exception ex)
 	{
 		logger.LogError(ex, "Veritabanı güncellenirken hata oluştu");
