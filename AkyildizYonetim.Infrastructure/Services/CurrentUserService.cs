@@ -43,4 +43,6 @@ public class CurrentUserService : ICurrentUserService
     public bool IsDataEntry => Role?.Equals("DataEntry", StringComparison.OrdinalIgnoreCase) ?? false;
 
     public bool IsObserver => Role?.Equals("Observer", StringComparison.OrdinalIgnoreCase) ?? false;
+
+    public bool IsOwner => Role?.Equals("Owner", StringComparison.OrdinalIgnoreCase) ?? false;
 }

@@ -18,6 +18,7 @@ public interface IApplicationDbContext
     DbSet<AuditLog> AuditLogs { get; }
     DbSet<Notification> Notifications { get; }
     DbSet<UserPushSubscription> UserPushSubscriptions { get; }
+    DbSet<ServiceRequest> ServiceRequests { get; }
     
     Microsoft.EntityFrameworkCore.Infrastructure.DatabaseFacade Database { get; }
     Task<int> SaveChangesAsync(CancellationToken cancellationToken);

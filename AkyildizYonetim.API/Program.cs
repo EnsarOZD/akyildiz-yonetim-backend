@@ -108,6 +108,8 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy("TenantWrite", policy => policy.RequireRole("admin", "manager", "dataentry", "tenant"));
     options.AddPolicy("FinanceRead", policy => policy.RequireRole("admin", "manager", "dataentry", "observer"));
     options.AddPolicy("FinanceWrite", policy => policy.RequireRole("admin", "manager", "dataentry"));
+    options.AddPolicy("OwnerAccess", policy => policy.RequireRole("owner"));
+    options.AddPolicy("OwnerOrAdmin", policy => policy.RequireRole("owner", "admin", "manager"));
 });
 
 // Swagger with JWT support

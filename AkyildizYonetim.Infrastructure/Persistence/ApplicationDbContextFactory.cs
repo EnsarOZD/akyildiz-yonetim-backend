@@ -27,5 +27,6 @@ public class ApplicationDbContextFactory : IDesignTimeDbContextFactory<Applicati
         public bool IsManager => false;
         public bool IsDataEntry => false;
         public bool IsObserver => false;
+        public bool IsOwner => false;
     }
 }

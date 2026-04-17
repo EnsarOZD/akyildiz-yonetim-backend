@@ -12,4 +12,5 @@ public interface ICurrentUserService
     bool IsManager { get; }
     bool IsDataEntry { get; }
     bool IsObserver { get; }
+    bool IsOwner { get; }
 }
