@@ -74,6 +74,14 @@ public class ServiceRequestsController : ControllerBase
         return result.IsSuccess ? Ok() : BadRequest(result.ErrorMessage);
     }
 
+    [Authorize(Roles = "admin")]
+    [HttpDelete("{id:guid}")]
+    public async Task<IActionResult> Delete(Guid id)
+    {
+        var result = await _mediator.Send(new DeleteServiceRequestCommand(id));
+        return result.IsSuccess ? NoContent() : BadRequest(result.ErrorMessage);
+    }
+
     [Authorize(Policy = "FinanceWrite")]
     [HttpPatch("{id:guid}/status")]
     public async Task<IActionResult> UpdateStatus(Guid id, [FromBody] UpdateStatusRequest body)
