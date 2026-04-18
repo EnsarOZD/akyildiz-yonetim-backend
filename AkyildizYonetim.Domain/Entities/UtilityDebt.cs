@@ -14,6 +14,13 @@ public enum DebtStatus
     Paid
 }
 
+public enum DebtorType
+{
+    All,
+    OnlyTenants,
+    OnlyOwners
+}
+
 public class UtilityDebt : BaseEntity
 {
     public Guid FlatId { get; set; }

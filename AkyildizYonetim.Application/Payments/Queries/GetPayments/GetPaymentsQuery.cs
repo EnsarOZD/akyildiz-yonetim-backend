@@ -14,9 +14,9 @@ public record GetPaymentsQuery : IRequest<Result<PagedResult<PaymentDto>>>
     public PaymentStatus? Status { get; init; }
     public Guid? OwnerId { get; init; }
     public Guid? TenantId { get; init; }
-    public DateTime? StartDate { get; init; }
     public DateTime? EndDate { get; init; }
     public DebtType? UtilityType { get; init; }
+    public DebtorType? DebtorType { get; init; }
     public bool ExcludeAdvanceUse { get; init; } = false;
     public int PageNumber { get; init; } = 1;
     public int PageSize { get; init; } = 20;
@@ -57,6 +57,14 @@ public class GetPaymentsQueryHandler : IRequestHandler<GetPaymentsQuery, Result<
 
         if (effectiveOwnerId.HasValue)
             query = query.Where(p => p.OwnerId == effectiveOwnerId.Value);
+
+        if (request.DebtorType.HasValue)
+        {
+            if (request.DebtorType == Domain.Entities.DebtorType.OnlyTenants)
+                query = query.Where(p => p.TenantId != null);
+            else if (request.DebtorType == Domain.Entities.DebtorType.OnlyOwners)
+                query = query.Where(p => p.TenantId == null);
+        }
 
         if (request.UtilityType.HasValue)
         {

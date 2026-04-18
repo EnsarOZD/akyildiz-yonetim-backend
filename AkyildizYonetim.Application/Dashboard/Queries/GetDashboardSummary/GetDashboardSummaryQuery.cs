@@ -146,6 +146,13 @@ public class GetDashboardSummaryQueryHandler
     private static (DateTime? start, DateTime? end) GetDateRange(string? filter)
     {
         var now = DateTime.UtcNow;
+
+        if (int.TryParse(filter, out int year) && year > 2000 && year < 2100)
+        {
+            return (new DateTime(year, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                    new DateTime(year, 12, 31, 23, 59, 59, DateTimeKind.Utc));
+        }
+
         return filter switch
         {
             "this_month" => (new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc),

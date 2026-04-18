@@ -19,6 +19,7 @@ public record GetUtilityDebtsQuery : IRequest<Result<PagedResult<UtilityDebtDto>
     public Guid? OwnerId { get; init; }
     public DateTime? StartDate { get; init; }
     public DateTime? EndDate { get; init; }
+    public DebtorType? DebtorType { get; init; }
     public int PageNumber { get; init; } = 1;
     public int PageSize { get; init; } = 20;
 }
@@ -61,6 +62,14 @@ public class GetUtilityDebtsQueryHandler : IRequestHandler<GetUtilityDebtsQuery,
 
         if (effectiveOwnerId.HasValue)
             query = query.Where(d => d.OwnerId == effectiveOwnerId.Value);
+
+        if (request.DebtorType.HasValue)
+        {
+            if (request.DebtorType == Domain.Entities.DebtorType.OnlyTenants)
+                query = query.Where(d => d.TenantId != null);
+            else if (request.DebtorType == Domain.Entities.DebtorType.OnlyOwners)
+                query = query.Where(d => d.TenantId == null);
+        }
 
         if (request.StartDate.HasValue)
         {
