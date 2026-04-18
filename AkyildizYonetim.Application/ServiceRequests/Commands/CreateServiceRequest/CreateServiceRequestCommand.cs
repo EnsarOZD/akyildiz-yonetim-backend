@@ -8,7 +8,8 @@ namespace AkyildizYonetim.Application.ServiceRequests.Commands.CreateServiceRequ
 public record CreateServiceRequestCommand(
     string Title,
     string Description,
-    ServiceRequestCategory Category
+    ServiceRequestCategory Category,
+    string? AttachmentUrl = null
 ) : IRequest<Result<Guid>>;
 
 public class CreateServiceRequestCommandHandler : IRequestHandler<CreateServiceRequestCommand, Result<Guid>>
@@ -37,6 +38,7 @@ public class CreateServiceRequestCommandHandler : IRequestHandler<CreateServiceR
                 Description = request.Description.Trim(),
                 Category = request.Category,
                 Status = ServiceRequestStatus.Open,
+                AttachmentUrl = request.AttachmentUrl,
                 TenantId = _currentUser.TenantId,
                 OwnerId = _currentUser.OwnerId
             };

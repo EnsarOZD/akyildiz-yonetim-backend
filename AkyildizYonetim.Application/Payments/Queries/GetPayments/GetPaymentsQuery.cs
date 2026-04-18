@@ -14,6 +14,7 @@ public record GetPaymentsQuery : IRequest<Result<PagedResult<PaymentDto>>>
     public PaymentStatus? Status { get; init; }
     public Guid? OwnerId { get; init; }
     public Guid? TenantId { get; init; }
+    public DateTime? StartDate { get; init; }
     public DateTime? EndDate { get; init; }
     public DebtType? UtilityType { get; init; }
     public DebtorType? DebtorType { get; init; }

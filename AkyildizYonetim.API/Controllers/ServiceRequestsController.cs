@@ -1,5 +1,7 @@
 using AkyildizYonetim.Application.ServiceRequests.Commands.CreateServiceRequest;
 using AkyildizYonetim.Application.ServiceRequests.Commands.UpdateServiceRequestStatus;
+using AkyildizYonetim.Application.ServiceRequests.Commands.AssignPersonnel;
+using AkyildizYonetim.Application.ServiceRequests.Commands.ResolveRequest;
 using AkyildizYonetim.Application.ServiceRequests.Queries.GetServiceRequests;
 using AkyildizYonetim.Domain.Entities;
 using MediatR;
@@ -14,10 +16,12 @@ namespace AkyildizYonetim.API.Controllers;
 public class ServiceRequestsController : ControllerBase
 {
     private readonly IMediator _mediator;
+    private readonly IWebHostEnvironment _env;
 
-    public ServiceRequestsController(IMediator mediator)
+    public ServiceRequestsController(IMediator mediator, IWebHostEnvironment env)
     {
         _mediator = mediator;
+        _env = env;
     }
 
     [HttpGet]
@@ -27,12 +31,43 @@ public class ServiceRequestsController : ControllerBase
         return result.IsSuccess ? Ok(result.Data) : BadRequest(result.ErrorMessage);
     }
 
-    [Authorize(Policy = "OwnerOrAdmin")]
+    [Authorize(Policy = "TenantWrite")]
     [HttpPost]
-    public async Task<IActionResult> Create([FromBody] CreateServiceRequestRequest body)
+    public async Task<IActionResult> Create([FromForm] CreateServiceRequestRequest body, IFormFile? attachment)
     {
-        var result = await _mediator.Send(new CreateServiceRequestCommand(body.Title, body.Description, body.Category));
+        string? attachmentUrl = null;
+        if (attachment != null)
+        {
+            var uploads = Path.Combine(_env.WebRootPath, "uploads", "service-requests");
+            if (!Directory.Exists(uploads)) Directory.CreateDirectory(uploads);
+
+            var fileName = $"{Guid.NewGuid()}{Path.GetExtension(attachment.FileName)}";
+            var filePath = Path.Combine(uploads, fileName);
+
+            using (var stream = new FileStream(filePath, FileMode.Create))
+            {
+                await attachment.CopyToAsync(stream);
+            }
+
+            attachmentUrl = $"/uploads/service-requests/{fileName}";
+        }
+
+        var result = await _mediator.Send(new CreateServiceRequestCommand(body.Title, body.Description, body.Category, attachmentUrl));
         return result.IsSuccess ? Ok(new { id = result.Data }) : BadRequest(result.ErrorMessage);
+    }
+
+    [HttpPatch("{id:guid}/assign")]
+    public async Task<IActionResult> Assign(Guid id, [FromBody] AssignPersonnelRequest body)
+    {
+        var result = await _mediator.Send(new AssignPersonnelCommand(id, body.PersonnelId));
+        return result.IsSuccess ? Ok() : BadRequest(result.ErrorMessage);
+    }
+
+    [HttpPatch("{id:guid}/resolve")]
+    public async Task<IActionResult> Resolve(Guid id, [FromBody] ResolveRequestRequest body)
+    {
+        var result = await _mediator.Send(new ResolveServiceRequestCommand(id, body.ResolutionNote));
+        return result.IsSuccess ? Ok() : BadRequest(result.ErrorMessage);
     }
 
     [Authorize(Policy = "FinanceWrite")]
@@ -45,4 +80,6 @@ public class ServiceRequestsController : ControllerBase
 }
 
 public record CreateServiceRequestRequest(string Title, string Description, ServiceRequestCategory Category);
+public record AssignPersonnelRequest(Guid PersonnelId);
+public record ResolveRequestRequest(string ResolutionNote);
 public record UpdateStatusRequest(ServiceRequestStatus Status, string? AdminNote);
