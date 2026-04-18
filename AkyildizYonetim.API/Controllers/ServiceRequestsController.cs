@@ -2,6 +2,7 @@ using AkyildizYonetim.Application.ServiceRequests.Commands.CreateServiceRequest;
 using AkyildizYonetim.Application.ServiceRequests.Commands.UpdateServiceRequestStatus;
 using AkyildizYonetim.Application.ServiceRequests.Commands.AssignPersonnel;
 using AkyildizYonetim.Application.ServiceRequests.Commands.ResolveRequest;
+using AkyildizYonetim.Application.ServiceRequests.Commands.DeleteServiceRequest;
 using AkyildizYonetim.Application.ServiceRequests.Queries.GetServiceRequests;
 using AkyildizYonetim.Domain.Entities;
 using MediatR;
@@ -33,30 +34,9 @@ public class ServiceRequestsController : ControllerBase
 
     [Authorize(Policy = "TenantWrite")]
     [HttpPost]
-    public async Task<IActionResult> Create(
-        [FromForm] string title, 
-        [FromForm] string description, 
-        [FromForm] ServiceRequestCategory category, 
-        IFormFile? attachment)
+    public async Task<IActionResult> Create([FromBody] CreateServiceRequestRequest body)
     {
-        string? attachmentUrl = null;
-        if (attachment != null)
-        {
-            var uploads = Path.Combine(_env.WebRootPath, "uploads", "service-requests");
-            if (!Directory.Exists(uploads)) Directory.CreateDirectory(uploads);
-
-            var fileName = $"{Guid.NewGuid()}{Path.GetExtension(attachment.FileName)}";
-            var filePath = Path.Combine(uploads, fileName);
-
-            using (var stream = new FileStream(filePath, FileMode.Create))
-            {
-                await attachment.CopyToAsync(stream);
-            }
-
-            attachmentUrl = $"/uploads/service-requests/{fileName}";
-        }
-
-        var result = await _mediator.Send(new CreateServiceRequestCommand(title, description, category, attachmentUrl));
+        var result = await _mediator.Send(new CreateServiceRequestCommand(body.Title, body.Description, body.Category, null));
         return result.IsSuccess ? Ok(new { id = result.Data }) : BadRequest(result.ErrorMessage);
     }
 
