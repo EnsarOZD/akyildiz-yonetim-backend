@@ -33,7 +33,11 @@ public class ServiceRequestsController : ControllerBase
 
     [Authorize(Policy = "TenantWrite")]
     [HttpPost]
-    public async Task<IActionResult> Create([FromForm] CreateServiceRequestRequest body, IFormFile? attachment)
+    public async Task<IActionResult> Create(
+        [FromForm] string title, 
+        [FromForm] string description, 
+        [FromForm] ServiceRequestCategory category, 
+        IFormFile? attachment)
     {
         string? attachmentUrl = null;
         if (attachment != null)
@@ -52,7 +56,7 @@ public class ServiceRequestsController : ControllerBase
             attachmentUrl = $"/uploads/service-requests/{fileName}";
         }
 
-        var result = await _mediator.Send(new CreateServiceRequestCommand(body.Title, body.Description, body.Category, attachmentUrl));
+        var result = await _mediator.Send(new CreateServiceRequestCommand(title, description, category, attachmentUrl));
         return result.IsSuccess ? Ok(new { id = result.Data }) : BadRequest(result.ErrorMessage);
     }
 
