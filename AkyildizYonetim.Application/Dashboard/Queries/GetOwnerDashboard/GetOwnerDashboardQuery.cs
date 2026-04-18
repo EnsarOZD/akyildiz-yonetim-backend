@@ -26,7 +26,10 @@ public class GetOwnerDashboardQueryHandler
         {
             var ownerId = _currentUser.OwnerId;
             if (!ownerId.HasValue)
-                return Result<OwnerDashboardDto>.Failure("Owner kimliği bulunamadı.");
+            {
+                // If no owner link found, return empty dashboard instead of 400 error
+                return Result<OwnerDashboardDto>.Success(new OwnerDashboardDto());
+            }
 
             // 1. All Flats with Tenant Info
             var flatInfos = await _context.Flats
@@ -38,13 +41,17 @@ public class GetOwnerDashboardQueryHandler
                     Code = !string.IsNullOrEmpty(f.Code) ? f.Code : f.Number,
                     IsOccupied = f.IsOccupied,
                     TenantId = f.TenantId,
-                    TenantName = f.Tenant != null ? (!string.IsNullOrEmpty(f.Tenant.CompanyName) ? f.Tenant.CompanyName : f.Tenant.ContactPersonName) : null
+                    TenantName = f.Tenant != null 
+                        ? (!string.IsNullOrEmpty(f.Tenant.CompanyName) ? f.Tenant.CompanyName : f.Tenant.ContactPersonName) 
+                        : null
                 })
                 .ToListAsync(ct);
 
-            // 2. All Debts (grouped or filtered)
+            // 2. All active Debts
             var debts = await _context.UtilityDebts
                 .AsNoTracking()
+                .Include(d => d.Flat)
+                .Include(d => d.Tenant)
                 .Where(d => d.OwnerId == ownerId.Value && d.Status != DebtStatus.Paid)
                 .Select(d => new OwnerDebtDto
                 {
@@ -59,9 +66,11 @@ public class GetOwnerDashboardQueryHandler
                     Status = d.Status.ToString(),
                     IsOverdue = d.DueDate < DateTime.UtcNow,
                     FlatId = d.FlatId,
-                    FlatCode = !string.IsNullOrEmpty(d.Flat.Code) ? d.Flat.Code : d.Flat.Number,
+                    FlatCode = d.Flat != null ? (!string.IsNullOrEmpty(d.Flat.Code) ? d.Flat.Code : d.Flat.Number) : "Unknown",
                     TenantId = d.TenantId,
-                    TenantName = d.Tenant != null ? (!string.IsNullOrEmpty(d.Tenant.CompanyName) ? d.Tenant.CompanyName : d.Tenant.ContactPersonName) : null,
+                    TenantName = d.Tenant != null 
+                        ? (!string.IsNullOrEmpty(d.Tenant.CompanyName) ? d.Tenant.CompanyName : d.Tenant.ContactPersonName) 
+                        : null,
                     IsVacantDebt = d.TenantId == null
                 })
                 .ToListAsync(ct);
@@ -86,8 +95,8 @@ public class GetOwnerDashboardQueryHandler
                 MyDebts = debts,
                 MyTenants = flatInfos.Where(f => f.TenantId != null).Select(f => new OwnerTenantDto 
                 { 
-                    TenantId = f.TenantId.Value, 
-                    DisplayName = f.TenantName!, 
+                    TenantId = f.TenantId!.Value, 
+                    DisplayName = f.TenantName ?? "Unknown Tenant", 
                     FlatCode = f.Code, 
                     IsActive = true 
                 }).ToList(),
