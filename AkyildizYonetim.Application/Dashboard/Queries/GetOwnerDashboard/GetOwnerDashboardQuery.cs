@@ -47,12 +47,15 @@ public class GetOwnerDashboardQueryHandler
                 })
                 .ToListAsync(ct);
 
-            // 2. All active Debts
+            // 2. All active Debts — query by FlatId (owner's flats) so debts created
+            //    without explicit OwnerId are still found.
+            var ownerFlatIds = flatInfos.Select(f => f.FlatId).ToHashSet();
+
             var debts = await _context.UtilityDebts
                 .AsNoTracking()
                 .Include(d => d.Flat)
                 .Include(d => d.Tenant)
-                .Where(d => d.OwnerId == ownerId.Value && d.Status != DebtStatus.Paid)
+                .Where(d => ownerFlatIds.Contains(d.FlatId) && d.Status != DebtStatus.Paid)
                 .Select(d => new OwnerDebtDto
                 {
                     Id = d.Id,
