@@ -48,7 +48,8 @@ public class UsersController : ControllerBase
             LastName = request.LastName,
             Email = request.Email,
             Role = role,
-            TenantId = request.CompanyId
+            TenantId = role == UserRole.Tenant ? request.CompanyId : null,
+            OwnerId  = role == UserRole.Owner  ? request.CompanyId : null,
         };
         
         var result = await _mediator.Send(command);
@@ -102,7 +103,16 @@ public class UsersController : ControllerBase
         if (request.LastName != null) user.LastName = request.LastName;
         if (request.Email != null) user.Email = request.Email;
         if (request.IsActive.HasValue) user.IsActive = request.IsActive.Value;
-        if (request.Role != null) user.Role = MapStringToRole(request.Role);
+        if (request.Role != null)
+        {
+            var newRole = MapStringToRole(request.Role);
+            user.Role = newRole;
+            if (request.CompanyId.HasValue)
+            {
+                user.TenantId = newRole == UserRole.Tenant ? request.CompanyId : null;
+                user.OwnerId  = newRole == UserRole.Owner  ? request.CompanyId : null;
+            }
+        }
 
         await _context.SaveChangesAsync(default);
         return NoContent();
@@ -239,4 +249,5 @@ public class UpdateUserRequest
     public string? Email { get; set; }
     public string? Role { get; set; }
     public bool? IsActive { get; set; }
+    public Guid? CompanyId { get; set; }
 }
