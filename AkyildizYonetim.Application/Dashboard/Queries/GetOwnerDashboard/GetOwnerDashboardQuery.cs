@@ -25,9 +25,19 @@ public class GetOwnerDashboardQueryHandler
         try
         {
             var ownerId = _currentUser.OwnerId;
+
+            // Fallback: JWT might be stale (issued before OwnerId claim was added).
+            // Re-resolve from the database using the authenticated user's ID.
+            if (!ownerId.HasValue && Guid.TryParse(_currentUser.UserId, out var userGuid))
+            {
+                ownerId = await _context.Users
+                    .Where(u => u.Id == userGuid && !u.IsDeleted)
+                    .Select(u => u.OwnerId)
+                    .FirstOrDefaultAsync(ct);
+            }
+
             if (!ownerId.HasValue)
             {
-                // If no owner link found, return empty dashboard instead of 400 error
                 return Result<OwnerDashboardDto>.Success(new OwnerDashboardDto());
             }
 
