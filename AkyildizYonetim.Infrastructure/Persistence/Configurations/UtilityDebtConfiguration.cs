@@ -50,13 +50,25 @@ public class UtilityDebtConfiguration : IEntityTypeConfiguration<UtilityDebt>
             
         builder.Property(d => d.UpdatedAt);
         
-        // Indexes
+        // Single-column indexes
         builder.HasIndex(d => d.FlatId);
         builder.HasIndex(d => d.Type);
         builder.HasIndex(d => d.PeriodYear);
-        builder.HasIndex(d => d.PeriodMonth);
         builder.HasIndex(d => d.Status);
         builder.HasIndex(d => d.TenantId);
         builder.HasIndex(d => d.OwnerId);
+
+        // Composite indexes — en sık kullanılan filtre kombinasyonları
+        builder.HasIndex(d => new { d.TenantId, d.Status, d.PeriodYear })
+            .HasDatabaseName("IX_UtilityDebts_TenantId_Status_PeriodYear");
+
+        builder.HasIndex(d => new { d.OwnerId, d.Status, d.PeriodYear })
+            .HasDatabaseName("IX_UtilityDebts_OwnerId_Status_PeriodYear");
+
+        builder.HasIndex(d => new { d.FlatId, d.PeriodYear, d.PeriodMonth, d.Status })
+            .HasDatabaseName("IX_UtilityDebts_FlatId_Period_Status");
+
+        builder.HasIndex(d => new { d.Status, d.DueDate })
+            .HasDatabaseName("IX_UtilityDebts_Status_DueDate");
     }
 } 

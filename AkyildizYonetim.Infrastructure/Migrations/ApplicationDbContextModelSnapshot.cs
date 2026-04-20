@@ -1010,6 +1010,18 @@ namespace AkyildizYonetim.Infrastructure.Migrations
 
                     b.HasIndex("Type");
 
+                    b.HasIndex("TenantId", "Status", "PeriodYear")
+                        .HasDatabaseName("IX_UtilityDebts_TenantId_Status_PeriodYear");
+
+                    b.HasIndex("OwnerId", "Status", "PeriodYear")
+                        .HasDatabaseName("IX_UtilityDebts_OwnerId_Status_PeriodYear");
+
+                    b.HasIndex("FlatId", "PeriodYear", "PeriodMonth", "Status")
+                        .HasDatabaseName("IX_UtilityDebts_FlatId_Period_Status");
+
+                    b.HasIndex("Status", "DueDate")
+                        .HasDatabaseName("IX_UtilityDebts_Status_DueDate");
+
                     b.ToTable("UtilityDebts");
                 });
 
