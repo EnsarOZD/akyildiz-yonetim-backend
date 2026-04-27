@@ -44,13 +44,12 @@ public class DeleteBulkPaymentsCommandHandler : IRequestHandler<DeleteBulkPaymen
         {
             if (pd.Debt != null)
             {
-                pd.Debt.RemainingAmount += pd.PaidAmount;
-                pd.Debt.PaidAmount = (pd.Debt.PaidAmount ?? 0) - pd.PaidAmount;
-                if (pd.Debt.PaidAmount < 0) pd.Debt.PaidAmount = 0;
-
-                pd.Debt.Status = pd.Debt.RemainingAmount >= pd.Debt.Amount
-                    ? DebtStatus.Unpaid
-                    : (pd.Debt.RemainingAmount > 0 ? DebtStatus.Partial : DebtStatus.Paid);
+                pd.Debt.PaidAmount = Math.Max(0, (pd.Debt.PaidAmount ?? 0) - pd.PaidAmount);
+                pd.Debt.RemainingAmount = pd.Debt.Amount - pd.Debt.PaidAmount.Value;
+                pd.Debt.Status = pd.Debt.RemainingAmount <= 0
+                    ? DebtStatus.Paid
+                    : (pd.Debt.PaidAmount > 0 ? DebtStatus.Partial : DebtStatus.Unpaid);
+                pd.Debt.UpdatedAt = DateTime.UtcNow;
             }
         }
 

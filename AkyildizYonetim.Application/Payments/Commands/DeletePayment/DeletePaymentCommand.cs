@@ -35,8 +35,8 @@ public class DeletePaymentCommandHandler : IRequestHandler<DeletePaymentCommand,
         foreach (var pd in payment.PaymentDebts)
         {
             var debt = pd.Debt;
-            debt.PaidAmount = (debt.PaidAmount ?? 0) - pd.PaidAmount;
-            debt.RemainingAmount = debt.Amount - (debt.PaidAmount ?? 0);
+            debt.PaidAmount = Math.Max(0, (debt.PaidAmount ?? 0) - pd.PaidAmount);
+            debt.RemainingAmount = debt.Amount - debt.PaidAmount.Value;
             debt.Status = debt.RemainingAmount <= 0 ? DebtStatus.Paid : (debt.PaidAmount > 0 ? DebtStatus.Partial : DebtStatus.Unpaid);
             debt.UpdatedAt = DateTime.UtcNow;
 

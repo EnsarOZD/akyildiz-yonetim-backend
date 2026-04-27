@@ -25,6 +25,7 @@ public record CreatePaymentWithDebtAllocationCommand : IRequest<Result<PaymentWi
     public bool AutoAllocate { get; init; } = true; // Otomatik eşleştirme
     public bool UseAdvanceAccount { get; init; } = false; // Avans hesabı kullan
     public DebtType? TargetDebtType { get; init; } // Filtrelenecek borç kategorisi
+    public string? BankName { get; init; } // Banka adı
 }
 
 public record DebtAllocationRequest
@@ -79,7 +80,9 @@ public class CreatePaymentWithDebtAllocationCommandHandler
                 Id = Guid.NewGuid(),
                 Amount = request.Amount,
                 Type = request.Type,
-                Status = PaymentStatus.Completed, // Otomatik olarak tamamlandı
+                Status = PaymentStatus.Completed,
+                Method = !string.IsNullOrEmpty(request.BankName) ? PaymentMethod.BankTransfer : PaymentMethod.Cash,
+                BankName = request.BankName,
                 PaymentDate = request.PaymentDate,
                 Description = request.Description,
                 ReceiptNumber = request.ReceiptNumber,
@@ -150,8 +153,8 @@ public class CreatePaymentWithDebtAllocationCommandHandler
             // 3. Otomatik borç eşleştirme (kalan miktar varsa)
             if (request.AutoAllocate && remainingAmount > 0)
             {
-                var tenantId = request.TenantId;
-                var ownerId = request.OwnerId;
+                var tenantId = effectiveTenantId;
+                var ownerId = effectiveOwnerId;
 
                 if (tenantId.HasValue)
                 {
