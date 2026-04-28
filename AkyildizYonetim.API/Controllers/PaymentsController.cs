@@ -117,7 +117,6 @@ public class PaymentsController : ControllerBase
         {
             Amount = request.Amount,
             Type = request.Type ?? PaymentType.Other,
-            Status = request.Status ?? PaymentStatus.Completed,
             PaymentDate = paymentDate,
             Description = request.Description,
             ReceiptNumber = request.ReceiptNumber,
@@ -127,7 +126,7 @@ public class PaymentsController : ControllerBase
 
         var result = await _mediator.Send(command);
         return result.IsSuccess
-            ? CreatedAtAction(nameof(GetPaymentById), new { id = result.Data.Id }, result.Data)
+            ? CreatedAtAction(nameof(GetPaymentById), new { id = result.Data!.Id }, result.Data)
             : BadRequest(result.ErrorMessage ?? string.Join(", ", result.Errors));
     }
 
@@ -137,7 +136,7 @@ public class PaymentsController : ControllerBase
     {
         var result = await _mediator.Send(command);
         return result.IsSuccess
-            ? CreatedAtAction(nameof(GetPaymentById), new { id = result.Data.Payment.Id }, result.Data)
+            ? CreatedAtAction(nameof(GetPaymentById), new { id = result.Data!.Payment!.Id }, result.Data)
             : BadRequest(result.ErrorMessage ?? string.Join(", ", result.Errors));
     }
 

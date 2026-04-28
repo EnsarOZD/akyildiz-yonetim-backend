@@ -120,7 +120,7 @@ public class GetUtilityDebtsQueryHandler : IRequestHandler<GetUtilityDebtsQuery,
                 UpdatedAt = d.UpdatedAt,
                 RemainingAmount = d.RemainingAmount,
                 DueDate = d.DueDate,
-                TenantName = d.TenantId.HasValue ? d.Tenant.CompanyName : (d.OwnerId.HasValue ? d.Owner.FirstName + " " + d.Owner.LastName : d.Description),
+                TenantName = d.TenantId.HasValue && d.Tenant != null ? d.Tenant.CompanyName : (d.OwnerId.HasValue && d.Owner != null ? d.Owner.FirstName + " " + d.Owner.LastName : d.Description),
                 FlatInfo = d.Flat != null ? "Daire " + d.Flat.Number : null
             })
             .ToPagedResultAsync(request.PageNumber, request.PageSize, cancellationToken);

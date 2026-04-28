@@ -75,7 +75,7 @@ public class OwnersController : ControllerBase
     }
 
     [HttpGet("dues")]
-    public async Task<IActionResult> GetOwnerDues()
+    public IActionResult GetOwnerDues()
     {
         // For now, return empty array since this feature is not fully implemented
         return Ok(new List<object>());

@@ -77,11 +77,11 @@ public class GetDebtsSummaryQueryHandler
             var tenants = tenantIds.Count > 0
                 ? (await _context.Tenants
                     .AsNoTracking()
-                    .Select(t => new { t.Id, Name = !string.IsNullOrEmpty(t.CompanyName) ? t.CompanyName : t.ContactPersonName })
+                    .Select(t => new { t.Id, Name = !string.IsNullOrEmpty(t.CompanyName) ? t.CompanyName : (!string.IsNullOrEmpty(t.ContactPersonName) ? t.ContactPersonName : "Belirsiz Kiracı") })
                     .ToListAsync(cancellationToken))
                     .Where(t => tenantIds.Contains(t.Id))
                     .ToDictionary(t => t.Id, t => t.Name)
-                : new Dictionary<Guid, string?>();
+                : new Dictionary<Guid, string>();
 
             var owners = ownerIds.Count > 0
                 ? (await _context.Owners

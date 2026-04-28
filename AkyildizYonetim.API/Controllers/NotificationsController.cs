@@ -179,7 +179,7 @@ public class NotificationsController : ControllerBase
         else
         {
             var owner = await _context.Owners
-                .FirstOrDefaultAsync(o => o.Id == request.OwnerId!.Value && !o.IsDeleted);
+                .FirstOrDefaultAsync(o => o.Id == request.OwnerId && !o.IsDeleted);
             if (owner == null) return NotFound("Mal sahibi bulunamadı.");
             if (string.IsNullOrEmpty(owner.Email)) return BadRequest("Mal sahibinin e-posta adresi yok.");
 
