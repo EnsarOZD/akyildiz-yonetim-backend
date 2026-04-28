@@ -3,7 +3,6 @@ using AkyildizYonetim.Application.Common.Models;
 using AkyildizYonetim.Domain.Entities;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
-
 using AkyildizYonetim.Application.Common.Extensions;
 
 namespace AkyildizYonetim.Application.Reports.Queries.GetFinancialReport;
@@ -46,13 +45,13 @@ public class GetFinancialReportQueryHandler
             if (request.OwnerId.HasValue && (_currentUserService.IsAdmin || _currentUserService.IsManager))
                 paymentsQuery = paymentsQuery.Where(p => p.OwnerId == request.OwnerId);
 
-            var payments = await paymentsQuery.ToListAsync(cancellationToken);
+            var paymentsList = await paymentsQuery.ToListAsync(cancellationToken);
 
-            // Borçlar
+            // Borçlar (DueDate'e göre filtreleme - Daha doğru finansal raporlama)
             var debtsQuery = _context.UtilityDebts
                 .AsNoTracking()
                 .FilterBySecurityContext(_currentUserService)
-                .Where(d => d.CreatedAt >= request.StartDate && d.CreatedAt <= request.EndDate && !d.IsDeleted);
+                .Where(d => d.DueDate >= request.StartDate && d.DueDate <= request.EndDate && !d.IsDeleted);
 
             if (request.TenantId.HasValue && (_currentUserService.IsAdmin || _currentUserService.IsManager))
                 debtsQuery = debtsQuery.Where(d => d.TenantId == request.TenantId);
@@ -60,18 +59,49 @@ public class GetFinancialReportQueryHandler
             if (request.OwnerId.HasValue && (_currentUserService.IsAdmin || _currentUserService.IsManager))
                 debtsQuery = debtsQuery.Where(d => d.OwnerId == request.OwnerId);
 
-            var debts = await debtsQuery.ToListAsync(cancellationToken);
+            var debtsList = await debtsQuery.ToListAsync(cancellationToken);
 
             // Avans hesapları
             var advanceAccountsQuery = _context.AdvanceAccounts
                 .AsNoTracking()
-                .FilterBySecurityContext(_currentUserService)
-                .Where(aa => aa.CreatedAt >= request.StartDate && aa.CreatedAt <= request.EndDate && !aa.IsDeleted);
+                .FilterBySecurityContext(_currentUserService);
 
             if (request.TenantId.HasValue && (_currentUserService.IsAdmin || _currentUserService.IsManager))
                 advanceAccountsQuery = advanceAccountsQuery.Where(aa => aa.TenantId == request.TenantId);
 
             var advanceAccounts = await advanceAccountsQuery.ToListAsync(cancellationToken);
+
+            // Detaylı liste oluştur (Kronolojik)
+            var details = new List<FinancialReportDetailDto>();
+
+            foreach (var p in paymentsList)
+            {
+                details.Add(new FinancialReportDetailDto
+                {
+                    Id = p.Id,
+                    Date = p.PaymentDate,
+                    TenantId = p.TenantId,
+                    OwnerId = p.OwnerId,
+                    PaymentAmount = p.Amount,
+                    Description = p.Description ?? "Ödeme Kaydı",
+                    Type = "Payment"
+                });
+            }
+
+            foreach (var d in debtsList)
+            {
+                details.Add(new FinancialReportDetailDto
+                {
+                    Id = d.Id,
+                    Date = d.DueDate,
+                    TenantId = d.TenantId,
+                    OwnerId = d.OwnerId,
+                    DebtAmount = d.Amount,
+                    RemainingAmount = d.RemainingAmount,
+                    Description = $"{d.Type} Borcu ({d.PeriodYear}/{d.PeriodMonth})",
+                    Type = "Debt"
+                });
+            }
 
             // Rapor verilerini hesapla
             var report = new FinancialReportDto
@@ -83,9 +113,9 @@ public class GetFinancialReportQueryHandler
                 },
                 Payments = new PaymentSummary
                 {
-                    TotalAmount = payments.Sum(p => p.Amount),
-                    Count = payments.Count,
-                    ByType = payments.GroupBy(p => p.Type)
+                    TotalAmount = paymentsList.Sum(p => p.Amount),
+                    Count = paymentsList.Count,
+                    ByType = paymentsList.GroupBy(p => p.Type)
                         .Select(g => new PaymentTypeSummary
                         {
                             Type = g.Key,
@@ -95,18 +125,18 @@ public class GetFinancialReportQueryHandler
                 },
                 Debts = new DebtSummary
                 {
-                    TotalAmount = debts.Sum(d => d.Amount),
-                    TotalPaid = debts.Sum(d => d.PaidAmount ?? 0),
-                    TotalRemaining = debts.Sum(d => d.RemainingAmount),
-                    Count = debts.Count,
-                    ByStatus = debts.GroupBy(d => d.Status)
+                    TotalAmount = debtsList.Sum(d => d.Amount),
+                    TotalPaid = debtsList.Sum(d => d.PaidAmount ?? 0),
+                    TotalRemaining = debtsList.Sum(d => d.RemainingAmount),
+                    Count = debtsList.Count,
+                    ByStatus = debtsList.GroupBy(d => d.Status)
                         .Select(g => new DebtStatusSummary
                         {
                             Status = g.Key,
                             Amount = g.Sum(d => d.Amount),
                             Count = g.Count()
                         }).ToList(),
-                    ByType = debts.GroupBy(d => d.Type)
+                    ByType = debtsList.GroupBy(d => d.Type)
                         .Select(g => new DebtTypeSummary
                         {
                             Type = g.Key,
@@ -121,7 +151,8 @@ public class GetFinancialReportQueryHandler
                     TotalBalance = advanceAccounts.Sum(aa => aa.Balance),
                     Count = advanceAccounts.Count,
                     AverageBalance = advanceAccounts.Any() ? advanceAccounts.Average(aa => aa.Balance) : 0
-                }
+                },
+                Details = details.OrderBy(d => d.Date).ToList()
             };
 
             return Result<FinancialReportDto>.Success(report);
@@ -139,6 +170,21 @@ public class FinancialReportDto
     public PaymentSummary Payments { get; set; } = null!;
     public DebtSummary Debts { get; set; } = null!;
     public AdvanceAccountSummary AdvanceAccounts { get; set; } = null!;
+    public List<FinancialReportDetailDto> Details { get; set; } = new();
+}
+
+public class FinancialReportDetailDto
+{
+    public Guid Id { get; set; }
+    public DateTime Date { get; set; }
+    public Guid? TenantId { get; set; }
+    public Guid? OwnerId { get; set; }
+    public decimal PaymentAmount { get; set; }
+    public decimal DebtAmount { get; set; }
+    public decimal RemainingAmount { get; set; }
+    public string Description { get; set; } = string.Empty;
+    public string Type { get; set; } = string.Empty; // "Payment" or "Debt"
+    public string? TenantName { get; set; }
 }
 
 public class PeriodInfo
