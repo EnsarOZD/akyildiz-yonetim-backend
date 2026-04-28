@@ -4,6 +4,7 @@ using AkyildizYonetim.Application.DTOs;
 using AkyildizYonetim.Domain.Entities;
 using AutoMapper;
 using MediatR;
+using Microsoft.Extensions.Logging;
 
 namespace AkyildizYonetim.Application.Payments.Commands.CreatePayment;
 
@@ -11,7 +12,6 @@ public record CreatePaymentCommand : IRequest<Result<PaymentDto>>
 {
 	public decimal Amount { get; init; }
 	public PaymentType Type { get; init; }
-	public PaymentStatus Status { get; init; }
 	public PaymentMethod Method { get; init; }
 	public string? BankName { get; init; }
 	public DateTime PaymentDate { get; init; }
@@ -27,13 +27,15 @@ public class CreatePaymentCommandHandler : IRequestHandler<CreatePaymentCommand,
 	private readonly IMapper _mapper;
 	private readonly IMediator _mediator;
 	private readonly ICurrentUserService _currentUserService;
+	private readonly ILogger<CreatePaymentCommandHandler> _logger;
 
-	public CreatePaymentCommandHandler(IApplicationDbContext context, IMapper mapper, IMediator mediator, ICurrentUserService currentUserService)
+	public CreatePaymentCommandHandler(IApplicationDbContext context, IMapper mapper, IMediator mediator, ICurrentUserService currentUserService, ILogger<CreatePaymentCommandHandler> logger)
 	{
 		_context = context;
 		_mapper = mapper;
 		_mediator = mediator;
 		_currentUserService = currentUserService;
+		_logger = logger;
 	}
 
 	public async Task<Result<PaymentDto>> Handle(CreatePaymentCommand request, CancellationToken cancellationToken)
@@ -56,7 +58,7 @@ public class CreatePaymentCommandHandler : IRequestHandler<CreatePaymentCommand,
 			Id = Guid.NewGuid(),
 			Amount = request.Amount,
 			Type = request.Type,
-			Status = request.Status,
+			Status = PaymentStatus.Completed,
 			Method = request.Method,
 			BankName = request.BankName,
 			PaymentDate = request.PaymentDate,
@@ -70,19 +72,27 @@ public class CreatePaymentCommandHandler : IRequestHandler<CreatePaymentCommand,
 		_context.Payments.Add(payment);
 		await _context.SaveChangesAsync(cancellationToken);
 
-		// 1. Notify Managers about new payment
-		await _mediator.Publish(new AkyildizYonetim.Domain.Events.PaymentCreatedEvent(
-			payment.Id,
-			payment.TenantId,
-			payment.Amount), cancellationToken);
-
-		// 2. Notify Tenant if payment is confirmed
-		if (payment.TenantId.HasValue && request.Status == AkyildizYonetim.Domain.Entities.PaymentStatus.Completed)
+		try
 		{
-			await _mediator.Publish(new AkyildizYonetim.Domain.Events.PaymentConfirmedEvent(
+			// 1. Notify Managers about new payment
+			await _mediator.Publish(new AkyildizYonetim.Domain.Events.PaymentCreatedEvent(
 				payment.Id,
-				payment.TenantId.Value,
+				payment.TenantId,
 				payment.Amount), cancellationToken);
+
+			// 2. Notify Tenant if payment is confirmed
+			if (payment.TenantId.HasValue && payment.Status == AkyildizYonetim.Domain.Entities.PaymentStatus.Completed)
+			{
+				await _mediator.Publish(new AkyildizYonetim.Domain.Events.PaymentConfirmedEvent(
+					payment.Id,
+					payment.TenantId.Value,
+					payment.Amount), cancellationToken);
+			}
+		}
+		catch (Exception ex)
+		{
+			// Log the warning, but don't fail the payment creation since the main operation succeeded
+			_logger.LogWarning(ex, "Payment was created successfully (Id: {PaymentId}), but publishing events failed.", payment.Id);
 		}
 
 		var paymentDto = _mapper.Map<PaymentDto>(payment);

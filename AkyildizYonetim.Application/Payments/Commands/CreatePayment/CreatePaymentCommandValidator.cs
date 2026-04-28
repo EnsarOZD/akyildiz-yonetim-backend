@@ -10,7 +10,8 @@ public class CreatePaymentCommandValidator : AbstractValidator<CreatePaymentComm
             .GreaterThan(0).WithMessage("Ödeme tutarı 0'dan büyük olmalıdır.");
 
         RuleFor(v => v.PaymentDate)
-            .NotEmpty().WithMessage("Ödeme tarihi boş olamaz.");
+            .NotEmpty().WithMessage("Ödeme tarihi boş olamaz.")
+            .LessThanOrEqualTo(DateTime.UtcNow).WithMessage("Ödeme tarihi gelecek bir tarih olamaz.");
 
         RuleFor(v => v.TenantId)
             .NotEmpty().When(v => !v.OwnerId.HasValue).WithMessage("Kiracı veya Mal Sahibi seçilmelidir.");

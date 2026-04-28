@@ -23,7 +23,6 @@ public record CreatePaymentWithDebtAllocationCommand : IRequest<Result<PaymentWi
     // Borç eşleştirme seçenekleri
     public List<DebtAllocationRequest>? DebtAllocations { get; init; } // Manuel eşleştirme
     public bool AutoAllocate { get; init; } = true; // Otomatik eşleştirme
-    public bool UseAdvanceAccount { get; init; } = false; // Avans hesabı kullan
     public DebtType? TargetDebtType { get; init; } // Filtrelenecek borç kategorisi
     public string? BankName { get; init; } // Banka adı
 }
@@ -99,37 +98,45 @@ public class CreatePaymentWithDebtAllocationCommandHandler
             // 2. Manuel borç eşleştirme (varsa)
             if (request.DebtAllocations?.Any() == true)
             {
+                var debtIds = request.DebtAllocations.Select(a => a.DebtId).Distinct().ToList();
+                
+                // N+1 Fix & IDOR Protection: Fetch all related debts at once
+                var debts = await _context.UtilityDebts
+                    .Where(d => debtIds.Contains(d.Id) && !d.IsDeleted)
+                    .Where(d => (effectiveTenantId.HasValue && d.TenantId == effectiveTenantId.Value) || 
+                                (effectiveOwnerId.HasValue && d.OwnerId == effectiveOwnerId.Value))
+                    .ToDictionaryAsync(d => d.Id, cancellationToken);
+                
+                if (debts.Count != debtIds.Count)
+                {
+                    return Result<PaymentWithAllocationDto>.Failure("Bazı borçlar bulunamadı veya yetkisiz bir borç ödenmeye çalışılıyor.");
+                }
+
                 foreach (var allocation in request.DebtAllocations)
                 {
                     if (remainingAmount <= 0) break;
 
-                    var debt = await _context.UtilityDebts
-                        .FirstOrDefaultAsync(d => d.Id == allocation.DebtId && !d.IsDeleted, cancellationToken);
+                    if (!debts.TryGetValue(allocation.DebtId, out var debt))
+                        continue;
 
-                    if (debt == null)
-                    {
-                        await transaction.RollbackAsync(cancellationToken);
-                        return Result<PaymentWithAllocationDto>.Failure($"Borç bulunamadı: {allocation.DebtId}");
-                    }
+                    var requestedAllocationAmount = Math.Min(allocation.Amount, remainingAmount);
+                    var finalAllocationAmount = Math.Min(requestedAllocationAmount, debt.RemainingAmount);
 
-                    var allocationAmount = Math.Min(allocation.Amount, remainingAmount);
-                    var allocationAmount2 = Math.Min(allocationAmount, debt.RemainingAmount);
-
-                    if (allocationAmount2 > 0)
+                    if (finalAllocationAmount > 0)
                     {
                         var paymentDebt = new PaymentDebt
                         {
                             Id = Guid.NewGuid(),
                             PaymentId = payment.Id,
                             DebtId = debt.Id,
-                            PaidAmount = allocationAmount2,
+                            PaidAmount = finalAllocationAmount,
                             CreatedAt = DateTime.UtcNow
                         };
 
                         _context.PaymentDebts.Add(paymentDebt);
                         
                         // Borç kalan miktarını güncelle
-                        debt.PaidAmount = (debt.PaidAmount ?? 0) + allocationAmount2;
+                        debt.PaidAmount = (debt.PaidAmount ?? 0) + finalAllocationAmount;
                         debt.RemainingAmount = debt.Amount - debt.PaidAmount.Value;
                         debt.UpdatedAt = DateTime.UtcNow;
 
@@ -141,11 +148,11 @@ public class CreatePaymentWithDebtAllocationCommandHandler
                         {
                             DebtId = debt.Id,
                             DebtDescription = debt.Description ?? $"{debt.Type} - {debt.PeriodYear}/{debt.PeriodMonth}",
-                            AllocatedAmount = allocationAmount2,
+                            AllocatedAmount = finalAllocationAmount,
                             RemainingDebtAmount = debt.RemainingAmount
                         });
 
-                        remainingAmount -= allocationAmount2;
+                        remainingAmount -= finalAllocationAmount;
                     }
                 }
             }
@@ -332,7 +339,6 @@ public class CreatePaymentWithDebtAllocationCommandHandler
         }
         catch (Exception ex)
         {
-            await transaction.RollbackAsync(cancellationToken);
             _logger.LogError(ex, "Ödeme oluşturulurken hata oluştu: {Amount}", request.Amount);
             return Result<PaymentWithAllocationDto>.Failure($"Ödeme oluşturulamadı: {ex.Message}");
         }
